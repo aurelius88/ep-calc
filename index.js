@@ -121,7 +121,7 @@ class EPCalc {
     }
 
     dailyStartExp() {
-        return this.totalExp - this.dailyExp;
+        return this.totalExp - BigInt(this.dailyExp);
     }
 
     leftEP() {

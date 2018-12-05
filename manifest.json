@@ -1,10 +1,10 @@
 {
   "files": {
     "index.js": "9a80289714bdc7b2238d30f2fcea31b7b37675a03ed546891ffc7fd135a04663",
-    "module.json": "ede5b7f750688d81d985bfa2fe6cf5dd5b0f95b5ee795a848bdd6b60d1e3985b",
+    "module.json": "7f357514d289b735648674b9c810b532ae810dd5fdfdb60e5a2b5977c7a78dba",
+    "settings_migrator.js": "1819897b683485a96a1bd51901ae1784491e33ccba51799f91edb7a82a5cf879",
     "lib/utils.js": "9793238160d10560ea7b123acd172ab215503d8ad862bda07ebc72cf2c1ee630",
     "locale/locale-de.json": "d3a44f5105aa691b426caa999a7fc8ba4ca7b33d32506e0d764a70669f416ab7",
     "locale/locale-en.json": "cddf9292c68dde5cb1eb3917c1bcfcb96c26e05d309382dd01fa9d29432a56b4"
-
   }
 }

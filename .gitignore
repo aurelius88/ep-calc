@@ -9,6 +9,9 @@ out
 logs
 opcodes
 
+#module config
+config.json
+
 # SHAGen tool
 SHAGen.exe
 SHAGen.exe.config

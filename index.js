@@ -1,50 +1,48 @@
-const Utils = require("./lib/utils");
+try {
+    require.resolve("util-lib");
+} catch (_) {
+    console.log("[ERROR] Please install module util-lib");
+}
 
-const SOFT_CAP_MULT = 0.88945;
+const UtilLib = require("util-lib");
+
+const SOFT_CAP_CHANGE_START = 0.88947365;
+const SOFT_CAP_CHANGE_END = SOFT_CAP_CHANGE_START + 0.2;
+const SOFT_CAP_MOD_BEFORE = 1;
+const SOFT_CAP_MOD_AFTER = 0.05;
 const VANGUARD_BONUS_MOD = 1.3;
-
-const ENGLISH = "en";
-const GERMAN = "de";
-const FRENCH = "fr";
+const CATCH_UP_CHANGE_START = 358;
+const CATCH_UP_CHANGE_END = 458;
+const CATCH_UP_MOD_BEFORE = 3;
+const CATCH_UP_MOD_AFTER = 0.1;
+const SOFT_CAP_GRADIENT = (SOFT_CAP_MOD_BEFORE - SOFT_CAP_MOD_AFTER) / (SOFT_CAP_CHANGE_START - SOFT_CAP_CHANGE_END);
+const CATCH_UP_GRADIENT = (CATCH_UP_MOD_BEFORE - CATCH_UP_MOD_AFTER) / (CATCH_UP_CHANGE_START - CATCH_UP_CHANGE_END);
 
 const EP_TABLE = new Map([
-    ["dungeon439", {exp: 1518.65, expAfterLimit: 1215.0, isQuest: true, limit: 16}],
-    ["CorsairsFraywindSkyring", {exp: 1518.0, expAfterLimit: 0, isQuest: true, limit: 16}],
-    ["dungeon431", {exp: 1418.0, expAfterLimit: 1134.0, isQuest: true, limit: 16}],
-    ["dungeon412", {exp: 1267.7, expAfterLimit: 1012.0, isQuest: true, limit: 16}],
-    ["levelUp65_2", {exp: 1000.0, expAfterLimit: 0, isQuest: false, limit: 1}],
-    ["islandOfDawn", {exp: 911.6, expAfterLimit: 729.0, isQuest: true, limit: 16}],
-    ["echoesOfAranea", {exp: 911.0, expAfterLimit: 0, isQuest: true, limit: 16}],
-    ["kumasIronBG", {exp: 843.0, expAfterLimit: 0, isQuest: true, limit: 16}],
-    ["guardianAndFlyingVanguard", {exp: 500.0, expAfterLimit: 0, isQuest: true, limit: 16}],
-    ["pitOfPetrax", {exp: 454.65, expAfterLimit: 0, isQuest: true, limit: 16}],
-    ["celestialArena", {exp: 425.0, expAfterLimit: 0, isQuest: true, limit: 16}],
-    ["aceDungeons", {exp: 303.0, expAfterLimit: 0, isQuest: true, limit: 16}],
-    ["kill30Quest", {exp: 270.0, expAfterLimit: 0, isQuest: true, limit: 16}],
-    ["gather30Quest", {exp: 180.0, expAfterLimit: 0, isQuest: true, limit: 16}],
-    ["bam", {exp: 10, expAfterLimit: 10.0, isQuest: false, limit: -1}],
-    ["levelUp65_1", {exp: 1518.65, expAfterLimit: 0, isQuest: false, limit: 1}]
+    ["dungeon439", { exp: 1518.65, expAfterLimit: 1215.0, isQuest: true, limit: 16 }],
+    ["CorsairsFraywindSkyring", { exp: 1518.0, expAfterLimit: 0, isQuest: true, limit: 16 }],
+    ["dungeon431", { exp: 1418.0, expAfterLimit: 1134.0, isQuest: true, limit: 16 }],
+    ["dungeon412", { exp: 1267.7, expAfterLimit: 1012.0, isQuest: true, limit: 16 }],
+    ["levelUp65_2", { exp: 1000.0, expAfterLimit: 1000.0, isQuest: false, limit: 1 }],
+    ["islandOfDawn", { exp: 911.6, expAfterLimit: 729.0, isQuest: true, limit: 16 }],
+    ["echoesOfAranea", { exp: 911.0, expAfterLimit: 0, isQuest: true, limit: 16 }],
+    ["kumasIronBG", { exp: 843.0, expAfterLimit: 0, isQuest: true, limit: 16 }],
+    ["guardianAndFlyingVanguard", { exp: 500.0, expAfterLimit: 0, isQuest: true, limit: 16 }],
+    ["pitOfPetrax", { exp: 454.65, expAfterLimit: 0, isQuest: true, limit: 16 }],
+    ["celestialArena", { exp: 425.0, expAfterLimit: 0, isQuest: true, limit: 16 }],
+    ["aceDungeons", { exp: 303.0, expAfterLimit: 0, isQuest: true, limit: 16 }],
+    ["kill30Quest", { exp: 270.0, expAfterLimit: 0, isQuest: true, limit: 16 }],
+    ["gather30Quest", { exp: 180.0, expAfterLimit: 0, isQuest: true, limit: 16 }],
+    ["bam", { exp: 10.0, expAfterLimit: 10.0, isQuest: false, limit: -1 }],
+    ["levelUp65_1", { exp: 1.0, expAfterLimit: 1.0, isQuest: false, limit: 1 }]
 ]);
-const EP_TABLE_LABEL = {};
-EP_TABLE_LABEL[GERMAN] = {
-    dungeon439: "493er+ Dungeon",
-    CorsairsFraywindSkyring: "Korsaren / Canyon / Himmelsring",
-    dungeon431: "431er Dungeon",
-    dungeon412: "412er Dungeon",
-    levelUp65_2: "Level up -> 65 (2. Char)",
-    islandOfDawn: "Insel der Dämmerung Niedrig/Mittel/Hoch",
-    echoesOfAranea: "Erinnerungen der Raqnanfestung",
-    kumasIronBG: "Kumas / Tal des Donners",
-    guardianAndFlyingVanguard: "(Fligende) Wächter Mission",
-    pitOfPetrax: "Petre-Brutstätte",
-    celestialArena: "Thron des Himmels",
-    aceDungeons: "Dungeon der Prüfungen",
-    kill30Quest: "Töte 30 __ quest",
-    gather30Quest: "Sammle 30 __ quest",
-    bam: "BAM",
-    levelUp65_1: "Level up -> 65 (1. Char)"
-};
-EP_TABLE_LABEL[ENGLISH] = {
+// enchantment isn't something you can rely on. But for the sake of completeness:
+// enchant frostmetal +8 -> 45
+// enchant frostmetal +9 -> 135
+// enchant stormcry +8 -> 100
+// enchant stormcry +9 -> 300
+
+const DEFAULT_LOCALE = {
     dungeon439: "493+ dungeon",
     CorsairsFraywindSkyring: "Corsairs / Fraywind / Skyring",
     dungeon431: "431 dungeon",
@@ -70,21 +68,21 @@ class EPCalc {
             this.totalEP = e.totalPoints;
             this.totalExp = e.exp;
             this.dailyExp = e.dailyExp;
-            this.dailyMaxBonusExp = e.dailyExpMax;
+            this.softCap = e.dailyExpMax;
             this.usedEP = e.usedPoints;
         });
 
         this.lastDiff = 0;
         this.levelUp = false;
-        this.catchUpMod = 0;   // catch up modifier
-        this.softCapMod = 0;     // soft cap modifier
+        this.catchUpMod = 0; // catch up modifier
+        this.softCapMod = 0; // soft cap modifier
 
         mod.hook("S_PLAYER_CHANGE_EP", 1, e => {
             this.level = e.level;
             this.totalEP = e.totalPoints;
             this.totalExp = e.exp;
             this.dailyExp = e.dailyExp;
-            this.dailyMaxBonusExp = e.dailyExpMax;
+            this.softCap = e.dailyExpMax;
             this.lastDiff = e.expDifference;
             this.levelUp = e.levelUp;
             this.catchUpMod = e.baseRev;
@@ -92,86 +90,268 @@ class EPCalc {
         });
 
         mod.hook("S_CHANGE_EP_EXP_DAILY_LIMIT", 1, e => {
-            this.dailyMaxBonusExp = e.limit;
+            this.softCap = e.limit;
         });
     }
 
-    calcBest() {
+    calcBest() {}
 
-    }
-
+    /**
+     * Counts how many times you can do each source before reaching the start of soft cap.
+     * @return {object} an object with all sources + counts. \{source:count\}
+     */
     countAllEPSources() {
         let result = {};
-        for(let key of EP_TABLE.keys()) {
+        for (let key of EP_TABLE.keys()) {
             result[key] = this.countEPSource(key);
         }
         return result;
     }
 
-    // TODO add modulo and check for chatch up limit. Assuming unlimited catch up mod for now~
+    /**
+     * Counts how many times a char can do each source before reaching the start of soft cap.
+     * @param  {number} ep         the current EP.
+     * @param  {number} expPercent the current exp in percent.
+     * @return {object}            an object with all sources + counts. \{source:count\}
+     */
+    static countAllEpSources(ep, expPercentStart, expPercentEnd) {
+        let result = {};
+        let leftExp = EPCalc.calcLeftExp(ep, expPercentStart, expPercentEnd);
+        for (let key of EP_TABLE.keys()) {
+            result[key] = EPCalc.countEPSource(ep, leftExp, key);
+        }
+        return result;
+    }
+
+    static calcLeftExp(ep, expPercentStart, expPercentEnd) {
+        return 0; // dummy
+    }
+
+    /**
+     * Counts how many times you can do a specific source before reaching the start of soft cap.
+     * @param  {string} epTableKey the source as string key.
+     * @return {number}            the number of sources you can do.
+     */
     countEPSource(epTableKey) {
+        return EPCalc.countEPSource(this.totalEP, this.leftDailyBonusExp(true), epTableKey);
+    }
+
+    /**
+     * Counts how many times a char can do a specific source before reaching the start of soft cap.
+     * @param  {number} ep         the current total EP.
+     * @param  {BigInt} exp        the current experience.
+     * @param  {string} epTableKey the source as string key.
+     * @return {number}            the number of sources a char can do.
+     */
+    static countEPSource(ep, leftExp, epTableKey) {
         let epObj = EP_TABLE.get(epTableKey);
-        let epExp = epObj.exp * this.catchUpMod;
+        let epExp = epObj.exp * (this.catchUpMod ? this.catchUpMod : EPCalc.calcCatchUpMod(ep));
         epExp *= epObj.isQuest ? VANGUARD_BONUS_MOD : 1;
-        return epExp != 0 ? Math.max(Math.floor(this.leftEP() / epExp), 0) : 0;
+        return epExp > 0 ? Math.max(Math.floor(leftExp / epExp), 0) : 0;
     }
 
-    softCap() {
-        return Math.floor(this.dailyMaxBonusExp * SOFT_CAP_MULT);
+    /**
+     * The start value of the soft cap. At how much ep exp the soft cap modifier will deacrease.
+     * @return {number} the start value of the soft cap.
+     */
+    softCapStart() {
+        return Math.floor(this.softCap * SOFT_CAP_CHANGE_START);
     }
 
-    dailyStartExp() {
+    /**
+     * The EP experience you started with this day.
+     * @return {BigInt} the start EP exp of this day.
+     */
+    startExp() {
         return this.totalExp - BigInt(this.dailyExp);
     }
 
+    /**
+     * The unused EP.
+     * @return {number} the unused EP.
+     */
     leftEP() {
         return this.totalEP - this.usedEP;
     }
 
     /**
+     * (Approximatly) calculates your catch up modifier.
+     * @return {number} your catch up modifier based on your EP.
+     */
+    calcCatchUpMod() {
+        return EPCalc.calcCatchUpMod(this.totalEP);
+    }
+
+    /**
+     * (Approximatly) calculates the catch up modifier.
+     * @param  {number} ep the total EP on which to calc the modifier.
+     * @return {number}    the catch up modifier based on given EP.
+     */
+    static calcCatchUpMod(ep) {
+        if (typeof ep !== "number") throw new TypeError("Argument should be a Number.");
+        if (ep < CATCH_UP_CHANGE_START) return CATCH_UP_MOD_BEFORE;
+        if (ep > CATCH_UP_CHANGE_END) return CATCH_UP_MOD_AFTER;
+        return (ep - CATCH_UP_CHANGE_START) * CATCH_UP_GRADIENT + CATCH_UP_MOD_BEFORE;
+    }
+
+    /**
+     * (Approximatly) calculates your soft cap modifier.
+     * @return {number} your soft cap modifier.
+     */
+    calcSoftCapMod() {
+        return EPCalc.calcCatchUpMod(this.leftDailyBonusExp(), this.softCap);
+    }
+
+    /**
+     * (Approximatly) calculates the soft cap modifier.
+     * @param  {number} dailyExp the daily exp gained so far.
+     * @param  {number} softCap  the soft cap
+     * @return {number}          the soft cap modifier.
+     */
+    static calcSoftCapMod(dailyExp, softCap) {
+        if (typeof dailyExp !== "number" || typeof softCap !== "number")
+            throw new TypeError("Argument should be a Number.");
+        let softCapRatio = dailyExp / softCap;
+        if (softCapRatio < SOFT_CAP_CHANGE_START) return SOFT_CAP_MOD_BEFORE;
+        if (softCapRatio > SOFT_CAP_CHANGE_END) return SOFT_CAP_MOD_AFTER;
+        return (softCapRatio - SOFT_CAP_CHANGE_START) * SOFT_CAP_GRADIENT + SOFT_CAP_MOD_BEFORE;
+    }
+
+    /**
      * The left daily experience untill cap is reached. If soft is true the 89%
      * soft cap is used. Otherwise the 100% soft cap.
-     * @param  {Boolean} [soft=false] is 89% soft cap?
-     * @return {Integer}              the left experience.
+     * @param  {boolean} [soft=false] is 89% soft cap?
+     * @return {number}              the left experience.
      */
     leftDailyBonusExp(soft = false) {
-        let diff =
-            (soft ? this.softCap() : this.dailyMaxBonusExp) - this.dailyExp;
-        return diff < 0 ? 0 : diff;
+        let diff = (soft ? this.softCapStart() : this.softCap) - this.dailyExp;
+        return diff;
     }
 }
 
 const ROOT_COMMAND = "epc";
+const LOCALE_PATH_PART = "./locale/locale-";
 
 module.exports = function ep_calculator(mod) {
-    const utils = new Utils(mod);
+    const utilLib = UtilLib(mod);
+    const utils = utilLib["chat-helper"];
     const epCalc = new EPCalc(mod);
+    const fileHelper = utilLib["file-helper"];
+    const CONFIG_PATH = fileHelper.getFullPath("config.json", __dirname);
+    const config = fileHelper.loadJson(CONFIG_PATH);
+    const configData = config.data;
     const command = mod.command;
-    let language = ENGLISH;
+    let language = configData.defaultLanguage;
+    let languages = configData.languages;
+    let locales = {};
+
+    for (let lang in languages) {
+        locales[lang] = fileHelper.loadJson(fileHelper.getFullPath(`${LOCALE_PATH_PART}${lang}.json`, __dirname));
+    }
 
     let commands = {
-        $default: showEPStatus,
+        $default() {
+            printHelpList(this.help);
+        },
+        info: showEPStatus,
 
         count: {
             $default: printEpSourcesCount
         },
-
+        "catch-up-mod": {
+            $default: function(ep) {
+                if (!ep) printHelpList(this.help["catch-up-mod"]);
+                utils.printMessage(`<font color="${utils.COLOR_VALUE}">${EPCalc.calcCatchUpMod(parseInt(ep))}</font>`);
+            }
+        },
+        "soft-cap-mod": {
+            $default: function(dailyExp, softCap) {
+                if (!softCap || !dailyExp) printHelpList(this.help["soft-cap-mod"]);
+                utils.printMessage(
+                    `<font color="${utils.COLOR_VALUE}">${EPCalc.calcSoftCapMod(
+                        parseInt(dailyExp),
+                        parseInt(softCap)
+                    )}</font>`
+                );
+            }
+        },
+        lang: {
+            $default: function(lang) {
+                if (!arguments.length) return printLanguages();
+                if (languages[lang]) {
+                    utils.printMessage(`Changed language to ${languages[lang]}`);
+                    language = lang;
+                }
+            }
+        },
         help: {
             long() {
-                return "The EP calculator.";
+                return `USAGE: ${ROOT_COMMAND}
+                A calculator for EP. Shows your current status. Can calculate the best method on how to get to the soft cap (not yet implemented). For more help use ${ROOT_COMMAND} help [subcommand]. Subcommands are listed below.`;
             },
             short() {
                 return "The EP calculator.";
             },
-            count: {
+            info: {
                 long() {
-                    return "Prints a list of sources for ep exp and how many times you can do it without exceeding the soft cap.";
+                    return `USAGE: ${ROOT_COMMAND} info`;
                 },
                 short() {
-                    return "Prints a list of sources for ep exp and how many times you can do it without exceeding the soft cap.";
+                    return "Prints information of the current ep status.";
+                },
+                $default() {
+                    printHelpList(this.help.info);
+                }
+            },
+            "catch-up-mod": {
+                long() {
+                    return `USAGE: ${ROOT_COMMAND} catch-up-mod <font color="${utils.COLOR_VALUE}">EP</font>
+                    Where <font color="${utils.COLOR_VALUE}">EP</font> is the EP you want to calculate the catch up modifier from.`;
+                },
+                short() {
+                    return "Returns the catch up modifier by a given EP value.";
+                },
+                $default() {
+                    printHelpList(this.help["catch-up-mod"]);
+                }
+            },
+            "soft-cap-mod": {
+                long() {
+                    return `USAGE: ${ROOT_COMMAND} soft-cap-mod <font color="${
+                        utils.COLOR_VALUE
+                    }">daily-exp</font> <font color="${utils.COLOR_VALUE}">soft-cap</font>
+                    Where <font color="${utils.COLOR_VALUE}">daily-exp</font> is the exp gained so far and
+                    <font color="${utils.COLOR_VALUE}">soft-cap</font> is the soft cap you want to use for.`;
+                },
+                short() {
+                    return `Returns the soft cap modifier by a given <font color="${
+                        utils.COLOR_VALUE
+                    }">daily exp</font> and <font color="${utils.COLOR_VALUE}">soft cap</font>.`;
+                },
+                $default() {
+                    printHelpList(this.help["soft-cap-mod"]);
+                }
+            },
+            count: {
+                long() {
+                    return `USAGE: ${ROOT_COMMAND} count`;
+                },
+                short() {
+                    return "Prints a list of sources for ep exp and how many times you can do each without exceeding the soft cap.";
                 },
                 $default() {
                     printHelpList(this.help.count);
+                }
+            },
+            lang: {
+                long() {
+                    return `USAGE: ${ROOT_COMMAND} lang [language-code]`;
+                },
+                short() {
+                    return "Changes the current language.";
+                },
+                $default() {
+                    printHelpList(this.help.lang);
                 }
             },
             $default() {
@@ -184,22 +364,39 @@ module.exports = function ep_calculator(mod) {
 
     function printHelpList(cmds = commands.help) {
         utils.printMessage(cmds.long());
+        let keys = Object.keys(cmds);
+        let ignoredKeys = ["$default", "short", "long"];
+        if (keys.length <= ignoredKeys.length) return;
         utils.printMessage("subcommands:");
-        for (let c in cmds) {
-            if (!["$default", "short", "long"].includes(c)) {
-                utils.printMessage(
-                    `<font color="${
-                        utils.COLOR_HIGHLIGHT
-                    }">${c}</font>  -  ${cmds[c].short()}`
-                );
+        for (let c of keys) {
+            if (!ignoredKeys.includes(c)) {
+                utils.printMessage(`<font color="${utils.COLOR_HIGHLIGHT}">${c}</font>  -  ${cmds[c].short()}`);
             }
         }
     }
 
     function printEpSourcesCount() {
         let epCounts = epCalc.countAllEPSources();
-        for(let key in epCounts) {
-            utils.printMessage(`${EP_TABLE_LABEL[language][key]}: ${epCounts[key]}`);
+        let leftExp = epCalc.leftDailyBonusExp(true);
+        if (leftExp < 0) {
+            return utils.printMessage("Soft Cap already exceeded!");
+        }
+        let count = 0;
+        for (let key in epCounts) {
+            if (epCounts[key]) {
+                utils.printMessage(
+                    `${locales[language] ? locales[language][key] : DEFAULT_LOCALE[key]}: ${epCounts[key]}`
+                );
+                count++;
+            }
+        }
+        if (!count) utils.printMessage("Soft Cap reached!");
+    }
+
+    function printLanguages() {
+        utils.printMessage("Available language codes:");
+        for (let lang in languages) {
+            utils.printMessage(`${lang}: ${languages[lang]}`);
         }
     }
 
@@ -207,44 +404,32 @@ module.exports = function ep_calculator(mod) {
         let messages = [];
         messages.push(`EP STATUS:`);
         messages.push(
-            `LVL: <font color="${utils.COLOR_VALUE}">${epCalc.level}</font>${
-                epCalc.levelUp ? " (Level UP!)" : ""
-            }`
+            `LVL: <font color="${utils.COLOR_VALUE}">${epCalc.level}</font>${epCalc.levelUp ? " (Level UP!)" : ""}`
         );
         messages.push(
-            `EP: <font color="${utils.COLOR_VALUE}">${
-                epCalc.usedEP
-            }</font>/<font color="${utils.COLOR_HIGHLIGHT}">${
+            `EP: <font color="${utils.COLOR_VALUE}">${epCalc.usedEP}</font>/<font color="${utils.COLOR_HIGHLIGHT}">${
                 epCalc.totalEP
-            }</font> (left: <font color="${
-                utils.COLOR_VALUE
-            }">${epCalc.leftEP()}</font>)`
+            }</font> (left: <font color="${utils.COLOR_VALUE}">${epCalc.leftEP()}</font>)`
         );
         messages.push(
-            `Last XP gained: <font color="${utils.COLOR_HIGHLIGHT}">${
-                epCalc.lastDiff
-            }</font> (<font color="${utils.COLOR_VALUE}">${
-                epCalc.catchUpMod
+            `Last XP gained: <font color="${utils.COLOR_HIGHLIGHT}">${epCalc.lastDiff}</font> (<font color="${
+                utils.COLOR_VALUE
+            }">${
+                epCalc.catchUpMod ? epCalc.catchUpMod : EPCalc.calcCatchUpMod(epCalc.totalEP)
             }</font>, TS=<font color="${utils.COLOR_VALUE}">${
-                epCalc.softCapMod
+                epCalc.softCapMod ? epCalc.softCapMod : EPCalc.calcSoftCapMod(epCalc.dailyExp, epCalc.softCap)
             }</font>)`
         );
         messages.push(
-            `XP: <font color="${
+            `XP: <font color="${utils.COLOR_VALUE}">${epCalc.startExp()}</font> ==( <font color="${
                 utils.COLOR_VALUE
-            }">${epCalc.dailyStartExp()}</font> ==( <font color="${
-                utils.COLOR_VALUE
-            }">${epCalc.softCap()}</font> [<font color="${utils.COLOR_VALUE}">${
-                epCalc.dailyMaxBonusExp
-            }</font>] - <font color="${utils.COLOR_VALUE}">${
-                epCalc.dailyExp
-            }</font> = <font color="${
+            }">${epCalc.softCapStart()}</font> [<font color="${utils.COLOR_VALUE}">${
+                epCalc.softCap
+            }</font>] - <font color="${utils.COLOR_VALUE}">${epCalc.dailyExp}</font> = <font color="${
                 utils.COLOR_HIGHLIGHT
-            }">${epCalc.leftDailyBonusExp(true)}</font> [<font color="${
-                utils.COLOR_VALUE
-            }">${epCalc.leftDailyBonusExp(false)}</font>] )==> <font color="${
-                utils.COLOR_VALUE
-            }">${epCalc.totalExp}</font>`
+            }">${epCalc.leftDailyBonusExp(true)}</font> [<font color="${utils.COLOR_VALUE}">${epCalc.leftDailyBonusExp(
+                false
+            )}</font>] )==> <font color="${utils.COLOR_VALUE}">${epCalc.totalExp}</font>`
         );
         messages.map(x => {
             utils.printMessage(x);

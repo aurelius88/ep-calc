@@ -5,7 +5,7 @@ const DefaultSettings = {
     "languages": {
         "en": "English",
         "de": "German",
-        "fr": "Frensh"
+        "fr": "French"
     }
 }
 

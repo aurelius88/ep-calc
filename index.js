@@ -5,6 +5,7 @@ try {
 }
 
 const UtilLib = require( "util-lib" );
+const MessageBuilder = require( "util-lib/classes/message-builder" );
 
 const SOFT_CAP_CHANGE_START = 0.88947365;
 const SOFT_CAP_CHANGE_END = SOFT_CAP_CHANGE_START + 0.2;
@@ -403,36 +404,86 @@ module.exports = function ep_calculator( mod ) {
     }
 
     function showEPStatus() {
+        let builder = new MessageBuilder();
         let messages = [];
         messages.push( `EP STATUS:` );
+
         messages.push(
-            `LVL: <font color="${utils.COLOR_VALUE}">${epCalc.level}</font>${epCalc.levelUp ? " (Level UP!)" : ""}`
+            builder
+                .color( utils.COLOR_HIGHLIGHT )
+                .text( `+${epCalc.lastDiff}` )
+                .color()
+                .text( ` XP ${epCalc.levelUp ? "(Level UP!)" : ""}` )
+                .toHtml()
         );
+        builder.clear();
         messages.push(
-            `EP: <font color="${utils.COLOR_VALUE}">${epCalc.usedEP}</font>/<font color="${utils.COLOR_HIGHLIGHT}">${
-                epCalc.totalEP
-            }</font> (left: <font color="${utils.COLOR_VALUE}">${epCalc.leftEP()}</font>)`
+            builder
+                .text( "Catch Up modifier: " )
+                .color( utils.COLOR_VALUE )
+                .text( epCalc.catchUpMod ? epCalc.catchUpMod : EPCalc.calcCatchUpMod( epCalc.totalEP ) )
+                .color()
+                .text( ", Soft Cap modifier: " )
+                .color( utils.COLOR_VALUE )
+                .text( epCalc.softCapMod ? epCalc.softCapMod :
+                    EPCalc.calcSoftCapMod( epCalc.dailyExp, epCalc.softCap ) )
+                .toHtml()
         );
+        builder.clear();
         messages.push(
-            `Last XP gained: <font color="${utils.COLOR_HIGHLIGHT}">${epCalc.lastDiff}</font> (<font color="${
-                utils.COLOR_VALUE
-            }">${
-                epCalc.catchUpMod ? epCalc.catchUpMod : EPCalc.calcCatchUpMod( epCalc.totalEP )
-            }</font>, TS=<font color="${utils.COLOR_VALUE}">${
-                epCalc.softCapMod ? epCalc.softCapMod : EPCalc.calcSoftCapMod( epCalc.dailyExp, epCalc.softCap )
-            }</font>)`
+            builder
+                .color( utils.COLOR_VALUE )
+                .text( epCalc.startExp() )
+                .color()
+                .text( " --" )
+                .color( utils.COLOR_HIGHLIGHT )
+                .text( epCalc.dailyExp )
+                .color()
+                .text( "--> " )
+                .color( utils.COLOR_VALUE )
+                .text( epCalc.totalExp )
+                .toHtml()
         );
+        builder.clear();
         messages.push(
-            `XP: <font color="${utils.COLOR_VALUE}">${epCalc.startExp()}</font> ==( <font color="${
-                utils.COLOR_VALUE
-            }">${epCalc.softCapStart()}</font> [<font color="${utils.COLOR_VALUE}">${
-                epCalc.softCap
-            }</font>] - <font color="${utils.COLOR_VALUE}">${epCalc.dailyExp}</font> = <font color="${
-                utils.COLOR_HIGHLIGHT
-            }">${epCalc.leftDailyBonusExp( true )}</font> [<font color="${utils.COLOR_VALUE}">${epCalc.leftDailyBonusExp(
-                false
-            )}</font>] )==> <font color="${utils.COLOR_VALUE}">${epCalc.totalExp}</font>`
+            builder
+                .color( utils.COLOR_HIGHLIGHT )
+                .text( epCalc.leftDailyBonusExp( true ) )
+                .color()
+                .text( "/" )
+                .color( utils.COLOR_VALUE )
+                .text( epCalc.softCapStart() )
+                .color()
+                .text( " [" )
+                .color( utils.COLOR_VALUE )
+                .text( epCalc.leftDailyBonusExp( false ) )
+                .color()
+                .text( "/" )
+                .color( utils.COLOR_VALUE )
+                .text( epCalc.softCap )
+                .color()
+                .text( "]" )
+                .toHtml()
         );
+        builder.clear();
+        messages.push(
+            builder
+                .text( "EP-LVL: " )
+                .color( utils.COLOR_VALUE )
+                .text( epCalc.level )
+                .color()
+                .text( "  EP: " )
+                .color( utils.COLOR_VALUE )
+                .text( epCalc.usedEP )
+                .color()
+                .text( "/" )
+                .color( utils.COLOR_HIGHLIGHT )
+                .text( epCalc.totalEP )
+                .color( utils.COLOR_VALUE )
+                .text( ` +${epCalc.leftEP()}` )
+                .toHtml()
+        );
+
         messages.map( x => {
             utils.printMessage( x );
         });

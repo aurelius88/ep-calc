@@ -425,8 +425,7 @@ module.exports = function ep_calculator( mod ) {
                 .color()
                 .text( ", Soft Cap modifier: " )
                 .color( utils.COLOR_VALUE )
-                .text( epCalc.softCapMod ? epCalc.softCapMod :
-                    EPCalc.calcSoftCapMod( epCalc.dailyExp, epCalc.softCap ) )
+                .text( epCalc.softCapMod ? epCalc.softCapMod : EPCalc.calcSoftCapMod( epCalc.dailyExp, epCalc.softCap ) )
                 .toHtml()
         );
         builder.clear();

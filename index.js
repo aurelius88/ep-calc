@@ -1,12 +1,3 @@
-try {
-    require.resolve( "util-lib" );
-} catch ( _ ) {
-    console.log( "[ERROR] Please install module util-lib" );
-}
-
-const UtilLib = require( "util-lib" );
-const MessageBuilder = require( "util-lib/classes/message-builder" );
-
 const SOFT_CAP_CHANGE_START = 0.88947365;
 const SOFT_CAP_CHANGE_END = SOFT_CAP_CHANGE_START + 0.2;
 const SOFT_CAP_MOD_BEFORE = 1;
@@ -232,20 +223,34 @@ class EPCalc {
 
 const ROOT_COMMAND = "epc";
 const LOCALE_PATH_PART = "./locale/locale-";
+const DEPENDENCIES = [
+    {
+        name: "util-lib",
+        servers: ["https://raw.githubusercontent.com/aurelius88/util-lib/master/"]
+    }
+];
 
 module.exports = function ep_calculator( mod ) {
+    const Dependency = require( "./dependency" );
+    if ( !Dependency.testDependencies( DEPENDENCIES ) ) {
+        const dep = new Dependency( DEPENDENCIES, mod );
+        dep.resolveDependencies( mod );
+        return;
+    }
+    const UtilLib = require( "util-lib" );
+    const MessageBuilder = require( "util-lib/classes/message-builder" );
+
     const utilLib = UtilLib( mod );
     const utils = utilLib["chat-helper"];
     const epCalc = new EPCalc( mod );
     const fileHelper = utilLib["file-helper"];
-    const CONFIG_PATH = fileHelper.getFullPath( "config.json", __dirname );
-    const config = fileHelper.loadJson( CONFIG_PATH );
-    const configData = config.data;
-    const command = mod.command;
-    let language = configData.defaultLanguage;
-    let languages = configData.languages;
-    let locales = {};
 
+    const configData = mod.settings;
+    const command = mod.command;
+    
+    let language = ( configData && configData.defaultLanguage ) || "en";
+    let languages = ( configData && configData.languages ) || ["en"];
+    let locales = {};
     for ( let lang in languages ) {
         locales[lang] = fileHelper.loadJson( fileHelper.getFullPath( `${LOCALE_PATH_PART}${lang}.json`, __dirname ) );
     }

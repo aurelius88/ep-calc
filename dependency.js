@@ -9,6 +9,28 @@ const STATUS_DOWNLOAD_FAILED = "failed-download";
 const STATUS_FILE_FAILED = "failed-saving-file";
 const STATUS_RESOLVED = "resolved";
 
+//
+// SAMPLE
+//
+// const DEPENDENCIES = [
+//     {
+//         name: "your-module-dependency",
+//         servers: ["https://your.address.to/your/module/", ...]
+//     }
+// ];
+//
+// module.exports = function yourModule() {
+//     const Dependency = require( "./dependency" );
+//     if ( !Dependency.testDependencies( DEPENDENCIES ) ) {
+//         const dep = new Dependency( DEPENDENCIES, mod );
+//         dep.resolveDependencies();
+//         return;
+//     }
+//     ...
+//     let mod = require("your-module-dependency");
+//     ...
+// }
+
 class Dependency {
     constructor(
         dependencies,

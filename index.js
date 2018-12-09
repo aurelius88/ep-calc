@@ -234,7 +234,7 @@ module.exports = function ep_calculator( mod ) {
     const Dependency = require( "./dependency" );
     if ( !Dependency.testDependencies( DEPENDENCIES ) ) {
         const dep = new Dependency( DEPENDENCIES, mod );
-        dep.resolveDependencies( mod );
+        dep.resolveDependencies();
         return;
     }
     const UtilLib = require( "util-lib" );
@@ -247,7 +247,7 @@ module.exports = function ep_calculator( mod ) {
 
     const configData = mod.settings;
     const command = mod.command;
-    
+
     let language = ( configData && configData.defaultLanguage ) || "en";
     let languages = ( configData && configData.languages ) || ["en"];
     let locales = {};

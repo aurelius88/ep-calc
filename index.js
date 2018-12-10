@@ -69,7 +69,7 @@ class EPCalc {
         this.catchUpMod = 0; // catch up modifier
         this.softCapMod = 0; // soft cap modifier
 
-        mod.hook( "S_PLAYER_CHANGE_EP", 1, e => {
+        mod.hook( "S_PLAYER_CHANGE_EP", 1, { order: -100 }, e => {
             this.level = e.level;
             this.totalEP = e.totalPoints;
             this.totalExp = e.exp;
@@ -141,6 +141,8 @@ class EPCalc {
         epExp *= epObj.isQuest ? VANGUARD_BONUS_MOD : 1;
         return epExp > 0 ? Math.max( Math.floor( leftExp / epExp ), 0 ) : 0;
     }
+
+    nextHightestEPSource() {}
 
     /**
      * The start value of the soft cap. At how much ep exp the soft cap modifier will deacrease.
@@ -222,31 +224,32 @@ class EPCalc {
 }
 
 const ROOT_COMMAND = "epc";
+const ROOT_COMMAND_ALTS = ["ep-calc"];
 const LOCALE_PATH_PART = "./locale/locale-";
-const DEPENDENCIES = [
-    {
-        name: "util-lib",
-        servers: ["https://raw.githubusercontent.com/aurelius88/util-lib/master/"]
-    }
-];
 
 module.exports = function ep_calculator( mod ) {
-    const Dependency = require( "./dependency" );
-    if ( !Dependency.testDependencies( DEPENDENCIES ) ) {
-        const dep = new Dependency( DEPENDENCIES, mod );
-        dep.resolveDependencies();
-        return;
-    }
-    const UtilLib = require( "util-lib" );
-    const MessageBuilder = require( "util-lib/classes/message-builder" );
+    const UtilLib = mod.require["util-lib"];
+    const MessageBuilder = UtilLib["message-builder"];
 
-    const utilLib = UtilLib( mod );
-    const utils = utilLib["chat-helper"];
+    const utils = new UtilLib["chat-helper"]( mod );
     const epCalc = new EPCalc( mod );
-    const fileHelper = utilLib["file-helper"];
+    const fileHelper = new UtilLib["file-helper"]();
 
     const configData = mod.settings;
     const command = mod.command;
+
+    let tracking = false;
+    let verbose = false;
+
+    mod.hook( "S_PLAYER_CHANGE_EP", 1, { order: 0 }, e => {
+        if ( tracking ) {
+            if ( verbose ) {
+                printShortEPStatus();
+            } else {
+                printLongEPStatus();
+            }
+        }
+    });
 
     let language = ( configData && configData.defaultLanguage ) || "en";
     let languages = ( configData && configData.languages ) || ["en"];
@@ -255,52 +258,89 @@ module.exports = function ep_calculator( mod ) {
         locales[lang] = fileHelper.loadJson( fileHelper.getFullPath( `${LOCALE_PATH_PART}${lang}.json`, __dirname ) );
     }
 
+    function printShortEPStatus() {
+        let msg = new MessageBuilder();
+        msg.color( utils.COLOR_HIGHLIGHT ).text( `+${epCalc.lastDiff}` );
+        msg.text();
+    }
+
+    function printLongEPStatus() {
+        showEPStatus();
+    }
+
+    let cmdMsg = new MessageBuilder();
+
     let commands = {
         $default() {
             printHelpList( this.help );
         },
         info: showEPStatus,
-
-        count: {
-            $default: printEpSourcesCount
-        },
-        "catch-up-mod": {
-            $default: function( ep ) {
-                if ( !ep ) printHelpList( this.help["catch-up-mod"]);
-                utils.printMessage( `<font color="${utils.COLOR_VALUE}">${EPCalc.calcCatchUpMod( parseInt( ep ) )}</font>` );
+        track: function() {
+            tracking = !tracking;
+            cmdMsg.clear();
+            cmdMsg.text( "tracking " );
+            if ( tracking ) {
+                cmdMsg.color( utils.COLOR_ENABLE ).text( "enabled" );
+            } else {
+                cmdMsg.color( utils.COLOR_DISABLE ).text( "disabled" );
             }
+            utils.printMessage( cmdMsg.toHtml() );
         },
-        "soft-cap-mod": {
-            $default: function( dailyExp, softCap ) {
-                if ( !softCap || !dailyExp ) printHelpList( this.help["soft-cap-mod"]);
-                utils.printMessage(
-                    `<font color="${utils.COLOR_VALUE}">${EPCalc.calcSoftCapMod(
-                        parseInt( dailyExp ),
-                        parseInt( softCap )
-                    )}</font>`
-                );
+        verbose: function() {
+            verbose = !verbose;
+            cmdMsg.clear();
+            cmdMsg.text( "verbose " );
+            if ( verbose ) {
+                cmdMsg.color( utils.COLOR_ENABLE ).text( "enabled" );
+            } else {
+                cmdMsg.color( utils.COLOR_DISABLE ).text( "disabled" );
             }
+            utils.printMessage( cmdMsg.toHtml() );
         },
-        lang: {
-            $default: function( lang ) {
-                if ( !arguments.length ) return printLanguages();
-                if ( languages[lang]) {
-                    utils.printMessage( `Changed language to ${languages[lang]}` );
-                    language = lang;
-                }
+        count: printEpSourcesCount,
+        "catch-up-mod": function( ep ) {
+            if ( !ep ) printHelpList( this.help["catch-up-mod"]);
+            cmdMsg.clear();
+            cmdMsg.color( utils.COLOR_VALUE ).text( EPCalc.calcCatchUpMod( parseInt( ep ) ) );
+            utils.printMessage( cmdMsg.toHtml() );
+        },
+        "soft-cap-mod": function( dailyExp, softCap ) {
+            if ( !softCap || !dailyExp ) printHelpList( this.help["soft-cap-mod"]);
+            utils.printMessage(
+                `<font color="${utils.COLOR_VALUE}">${EPCalc.calcSoftCapMod(
+                    parseInt( dailyExp ),
+                    parseInt( softCap )
+                )}</font>`
+            );
+        },
+        lang: function( lang ) {
+            if ( !arguments.length ) return printLanguages();
+            if ( languages[lang]) {
+                utils.printMessage( `Changed language to ${languages[lang]}` );
+                language = lang;
             }
         },
         help: {
             long() {
-                return `USAGE: ${ROOT_COMMAND}
-                A calculator for EP. Shows your current status. Can calculate the best method on how to get to the soft cap (not yet implemented). For more help use ${ROOT_COMMAND} help [subcommand]. Subcommands are listed below.`;
+                cmdMsg.clear();
+                cmdMsg.text( "USAGE: " );
+                cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                cmdMsg.color().text( "\nA calculator for talent EPs." );
+                cmdMsg.text( "Calculate all things around EP, like soft cap, modifiers, sources of EP, EP exp." );
+                cmdMsg.text( "May calculate the best method on how to get to the soft cap (not yet implemented). " );
+                cmdMsg.text( `For more help use ${ROOT_COMMAND} help [subcommand]. Subcommands are listed below.` );
+                return cmdMsg.toHtml();
             },
             short() {
                 return "The EP calculator.";
             },
             info: {
                 long() {
-                    return `USAGE: ${ROOT_COMMAND} info`;
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                    cmdMsg.color().text( " info" );
+                    return cmdMsg.toHtml();
                 },
                 short() {
                     return "Prints information of the current ep status.";
@@ -311,10 +351,15 @@ module.exports = function ep_calculator( mod ) {
             },
             "catch-up-mod": {
                 long() {
-                    return `USAGE: ${ROOT_COMMAND} catch-up-mod <font color="${utils.COLOR_VALUE}">EP</font>
-                    Where <font color="${
-    utils.COLOR_VALUE
-}">EP</font> is the EP you want to calculate the catch up modifier from.`;
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                    cmdMsg.color().text( " catch-up-mod " );
+                    cmdMsg.color( utils.COLOR_VALUE ).text( "EP" );
+                    cmdMsg.color().text( "\nWhere...\n" );
+                    cmdMsg.color( utils.COLOR_VALUE ).text( "EP" );
+                    cmdMsg.color().text( " is the EP you want to calculate the catch up modifier from." );
+                    return cmdMsg.toHtml();
                 },
                 short() {
                     return "Returns the catch up modifier by a given EP value.";
@@ -325,16 +370,29 @@ module.exports = function ep_calculator( mod ) {
             },
             "soft-cap-mod": {
                 long() {
-                    return `USAGE: ${ROOT_COMMAND} soft-cap-mod <font color="${
-                        utils.COLOR_VALUE
-                    }">daily-exp</font> <font color="${utils.COLOR_VALUE}">soft-cap</font>
-                    Where <font color="${utils.COLOR_VALUE}">daily-exp</font> is the exp gained so far and
-                    <font color="${utils.COLOR_VALUE}">soft-cap</font> is the soft cap you want to use for.`;
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                    cmdMsg.color().text( " soft-cap-mod " );
+                    cmdMsg
+                        .color( utils.COLOR_VALUE )
+                        .text( "daily-exp " )
+                        .text( "soft-cap" );
+                    cmdMsg.color().text( "\nWhere...\n" );
+                    cmdMsg.color( utils.COLOR_VALUE ).text( "daily-exp" );
+                    cmdMsg.color().text( " is the exp gained so far and\n" );
+                    cmdMsg.color( utils.COLOR_VALUE ).text( "soft-cap" );
+                    cmdMsg.color().text( " is the soft cap you want to use for." );
+                    return cmdMsg.toHtml();
                 },
                 short() {
-                    return `Returns the soft cap modifier by a given <font color="${
-                        utils.COLOR_VALUE
-                    }">daily exp</font> and <font color="${utils.COLOR_VALUE}">soft cap</font>.`;
+                    cmdMsg.clear();
+                    cmdMsg.text( "Returns the soft cap modifier by a given " );
+                    cmdMsg.color( utils.COLOR_VALUE ).text( "daily-exp" );
+                    cmdMsg.text( "Returns the soft cap modifier by a given " );
+                    cmdMsg.color( utils.COLOR_VALUE ).text( "soft-cap" );
+                    cmdMsg.color().text( "." );
+                    return cmdMsg.toHtml();
                 },
                 $default() {
                     printHelpList( this.help["soft-cap-mod"]);
@@ -342,10 +400,17 @@ module.exports = function ep_calculator( mod ) {
             },
             count: {
                 long() {
-                    return `USAGE: ${ROOT_COMMAND} count`;
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                    cmdMsg.color().text( " count" );
+                    return cmdMsg.toHtml();
                 },
                 short() {
-                    return "Prints a list of sources for ep exp and how many times you can do each without exceeding the soft cap.";
+                    return (
+                        "Prints a list of sources for EP exp and "
+                        + "how many times you can do each without exceeding the soft cap."
+                    );
                 },
                 $default() {
                     printHelpList( this.help.count );
@@ -353,7 +418,11 @@ module.exports = function ep_calculator( mod ) {
             },
             lang: {
                 long() {
-                    return `USAGE: ${ROOT_COMMAND} lang [language-code]`;
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                    cmdMsg.color().text( " lang [language-code]" );
+                    return cmdMsg.toHtml();
                 },
                 short() {
                     return "Changes the current language.";
@@ -369,6 +438,9 @@ module.exports = function ep_calculator( mod ) {
     };
 
     command.add( ROOT_COMMAND, commands, commands );
+    for ( let cmd of ROOT_COMMAND_ALTS ) {
+        command.add( cmd, commands, commands );
+    }
 
     function printHelpList( cmds = commands.help ) {
         utils.printMessage( cmds.long() );
@@ -413,80 +485,45 @@ module.exports = function ep_calculator( mod ) {
         let messages = [];
         messages.push( `EP STATUS:` );
 
-        messages.push(
-            builder
-                .color( utils.COLOR_HIGHLIGHT )
-                .text( `+${epCalc.lastDiff}` )
-                .color()
-                .text( ` XP ${epCalc.levelUp ? "(Level UP!)" : ""}` )
-                .toHtml()
-        );
+        builder.color( utils.COLOR_HIGHLIGHT ).text( `+${epCalc.lastDiff}` );
+        builder.color().text( ` XP ${epCalc.levelUp ? "(Level UP!)" : ""}` );
+        messages.push( builder.toHtml() );
         builder.clear();
-        messages.push(
-            builder
-                .text( "Catch Up modifier: " )
-                .color( utils.COLOR_VALUE )
-                .text( epCalc.catchUpMod ? epCalc.catchUpMod : EPCalc.calcCatchUpMod( epCalc.totalEP ) )
-                .color()
-                .text( ", Soft Cap modifier: " )
-                .color( utils.COLOR_VALUE )
-                .text( epCalc.softCapMod ? epCalc.softCapMod : EPCalc.calcSoftCapMod( epCalc.dailyExp, epCalc.softCap ) )
-                .toHtml()
-        );
+        builder.text( "Catch Up modifier: " );
+        builder
+            .color( utils.COLOR_VALUE )
+            .text( epCalc.catchUpMod ? epCalc.catchUpMod : EPCalc.calcCatchUpMod( epCalc.totalEP ) );
+        builder.color().text( ", Soft Cap modifier: " );
+        builder
+            .color( utils.COLOR_VALUE )
+            .text( epCalc.softCapMod ? epCalc.softCapMod : EPCalc.calcSoftCapMod( epCalc.dailyExp, epCalc.softCap ) );
+        messages.push( builder.toHtml() );
         builder.clear();
-        messages.push(
-            builder
-                .color( utils.COLOR_VALUE )
-                .text( epCalc.startExp() )
-                .color()
-                .text( " --" )
-                .color( utils.COLOR_HIGHLIGHT )
-                .text( epCalc.dailyExp )
-                .color()
-                .text( "--> " )
-                .color( utils.COLOR_VALUE )
-                .text( epCalc.totalExp )
-                .toHtml()
-        );
+        builder.color( utils.COLOR_VALUE ).text( epCalc.startExp() );
+        builder.color().text( " --" );
+        builder.color( utils.COLOR_HIGHLIGHT ).text( epCalc.dailyExp );
+        builder.color().text( "--> " );
+        builder.color( utils.COLOR_VALUE ).text( epCalc.totalExp );
+        messages.push( builder.toHtml() );
         builder.clear();
-        messages.push(
-            builder
-                .color( utils.COLOR_HIGHLIGHT )
-                .text( epCalc.leftDailyBonusExp( true ) )
-                .color()
-                .text( "/" )
-                .color( utils.COLOR_VALUE )
-                .text( epCalc.softCapStart() )
-                .color()
-                .text( " [" )
-                .color( utils.COLOR_VALUE )
-                .text( epCalc.leftDailyBonusExp( false ) )
-                .color()
-                .text( "/" )
-                .color( utils.COLOR_VALUE )
-                .text( epCalc.softCap )
-                .color()
-                .text( "]" )
-                .toHtml()
-        );
+        builder.color( utils.COLOR_HIGHLIGHT ).text( epCalc.leftDailyBonusExp( true ) );
+        builder.color().text( "/" );
+        builder.color( utils.COLOR_VALUE ).text( epCalc.softCapStart() );
+        builder.color().text( " [" );
+        builder.color( utils.COLOR_VALUE ).text( epCalc.leftDailyBonusExp( false ) );
+        builder.color().text( "/" );
+        builder.color( utils.COLOR_VALUE ).text( epCalc.softCap );
+        builder.color().text( "]" );
+        messages.push( builder.toHtml() );
         builder.clear();
-        messages.push(
-            builder
-                .text( "EP-LVL: " )
-                .color( utils.COLOR_VALUE )
-                .text( epCalc.level )
-                .color()
-                .text( "  EP: " )
-                .color( utils.COLOR_VALUE )
-                .text( epCalc.usedEP )
-                .color()
-                .text( "/" )
-                .color( utils.COLOR_HIGHLIGHT )
-                .text( epCalc.totalEP )
-                .color( utils.COLOR_VALUE )
-                .text( ` +${epCalc.leftEP()}` )
-                .toHtml()
-        );
+        builder.text( "EP-LVL: " );
+        builder.color( utils.COLOR_VALUE ).text( epCalc.level );
+        builder.color().text( "  EP: " );
+        builder.color( utils.COLOR_VALUE ).text( epCalc.usedEP );
+        builder.color().text( "/" );
+        builder.color( utils.COLOR_HIGHLIGHT ).text( epCalc.totalEP );
+        builder.color( utils.COLOR_VALUE ).text( ` +${epCalc.leftEP()}` );
+        messages.push( builder.toHtml() );
 
         messages.map( x => {
             utils.printMessage( x );

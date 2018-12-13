@@ -1,4 +1,5 @@
 # module output
+.mani*
 positions.json
 opcodes.json
 groups.json
@@ -9,8 +10,5 @@ opcodes
 #module config
 config.json
 
-# SHAGen tool
-SHAGen.exe
-SHAGen.exe.config
-Newtonsoft.Json.dll
-generated-manifest.json
+# Manifest-Generator
+mani-gen*

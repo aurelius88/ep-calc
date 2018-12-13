@@ -1,10 +1,11 @@
 {
-  "files": {
-    "index.js": "b7891a07e1ea95651ee0c2845b487d93fd5a85ab7a798668cb73c9b0d9fdd110",
-    "module.json": "3f330f92ac1fc201ae67e822a10f8c064cfba79d83090dc3755ff8024634081b",
-    "README.md": "4c10fd213b3709a9782ce308cea2938d08fcd0ddc3ce4ed1cc87283c63f6adcd",
-    "settings_migrator.js": "83543fa4e397ac75d7228eafb957d3a1810dee60c516943be3cedf24f60a1a93",
-    "locale/locale-de.json": "d3a44f5105aa691b426caa999a7fc8ba4ca7b33d32506e0d764a70669f416ab7",
-    "locale/locale-en.json": "cddf9292c68dde5cb1eb3917c1bcfcb96c26e05d309382dd01fa9d29432a56b4"
-  }
+    "files": {
+        "index.js": "b7891a07e1ea95651ee0c2845b487d93fd5a85ab7a798668cb73c9b0d9fdd110",
+        "module.json": "3f330f92ac1fc201ae67e822a10f8c064cfba79d83090dc3755ff8024634081b",
+        "locale/locale-de.json": "87d6c2711dcd453c6643253b008c7db9386efec3ab680b92428da3f7d4e98fa2",
+        "locale/locale-en.json": "62ea2b6486f6cb5b78aa0c8fba2cb954a785801fe9efabd309bcaa4569f01496",
+        "README.md": "4c10fd213b3709a9782ce308cea2938d08fcd0ddc3ce4ed1cc87283c63f6adcd",
+        "settings_migrator.js": "83543fa4e397ac75d7228eafb957d3a1810dee60c516943be3cedf24f60a1a93"
+    },
+    "defs": {}
 }

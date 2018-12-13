@@ -195,7 +195,7 @@ class EPCalc {
      * @return {number} your soft cap modifier.
      */
     calcSoftCapMod() {
-        return EPCalc.calcCatchUpMod( this.leftDailyBonusExp(), this.softCap );
+        return EPCalc.calcSoftCapMod( this.dailyExp, this.softCap );
     }
 
     /**

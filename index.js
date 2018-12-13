@@ -129,7 +129,8 @@ class EPCalc {
     }
 
     /**
-     * Counts how many times a char can do a specific source before reaching the start of soft cap.
+     * Counts how many times a char can do a specific source before reaching the
+     * start of soft cap.
      * @param  {number} ep         the current total EP.
      * @param  {BigInt} exp        the current experience.
      * @param  {string} epTableKey the source as string key.
@@ -145,10 +146,11 @@ class EPCalc {
     nextHightestEPSource() {}
 
     /**
-     * The start value of the soft cap. At how much ep exp the soft cap modifier will deacrease.
+     * The start value of the soft cap. At how much ep exp the soft cap
+     * modifier will deacrease.
      * @return {number} the start value of the soft cap.
      */
-    softCapStart() {
+    get softCapStart() {
         return Math.floor( this.softCap * SOFT_CAP_CHANGE_START );
     }
 
@@ -218,7 +220,7 @@ class EPCalc {
      * @return {number}              the left experience.
      */
     leftDailyBonusExp( soft = false ) {
-        let diff = ( soft ? this.softCapStart() : this.softCap ) - this.dailyExp;
+        let diff = ( soft ? this.softCapStart : this.softCap ) - this.dailyExp;
         return diff;
     }
 }
@@ -260,8 +262,11 @@ module.exports = function ep_calculator( mod ) {
 
     function printShortEPStatus() {
         let msg = new MessageBuilder();
-        msg.color( utils.COLOR_HIGHLIGHT ).text( `+${epCalc.lastDiff}` );
-        msg.text();
+        msg.color( utils.COLOR_HIGHLIGHT ).text( `+${epCalc.lastDiff}  ` );
+        let xpToCap = epCalc.expToCap();
+        msg.color( `rgb(40,255,40)` ).text();
+
+        utils.printMessage( msg.toHtml() );
     }
 
     function printLongEPStatus() {
@@ -299,19 +304,16 @@ module.exports = function ep_calculator( mod ) {
         },
         count: printEpSourcesCount,
         "catch-up-mod": function( ep ) {
-            if ( !ep ) printHelpList( this.help["catch-up-mod"]);
+            if ( !ep ) return printHelpList( this.help["catch-up-mod"]);
             cmdMsg.clear();
             cmdMsg.color( utils.COLOR_VALUE ).text( EPCalc.calcCatchUpMod( parseInt( ep ) ) );
             utils.printMessage( cmdMsg.toHtml() );
         },
         "soft-cap-mod": function( dailyExp, softCap ) {
-            if ( !softCap || !dailyExp ) printHelpList( this.help["soft-cap-mod"]);
-            utils.printMessage(
-                `<font color="${utils.COLOR_VALUE}">${EPCalc.calcSoftCapMod(
-                    parseInt( dailyExp ),
-                    parseInt( softCap )
-                )}</font>`
-            );
+            if ( !softCap || !dailyExp ) return printHelpList( this.help["soft-cap-mod"]);
+            cmdMsg.clear();
+            cmdMsg.color( utils.COLOR_VALUE ).text( EPCalc.calcSoftCapMod( parseInt( dailyExp ), parseInt( softCap ) ) );
+            utils.printMessage( cmdMsg.toHtml() );
         },
         lang: function( lang ) {
             if ( !arguments.length ) return printLanguages();
@@ -484,7 +486,6 @@ module.exports = function ep_calculator( mod ) {
         let builder = new MessageBuilder();
         let messages = [];
         messages.push( `EP STATUS:` );
-
         builder.color( utils.COLOR_HIGHLIGHT ).text( `+${epCalc.lastDiff}` );
         builder.color().text( ` XP ${epCalc.levelUp ? "(Level UP!)" : ""}` );
         messages.push( builder.toHtml() );
@@ -501,28 +502,28 @@ module.exports = function ep_calculator( mod ) {
         builder.clear();
         builder.color( utils.COLOR_VALUE ).text( epCalc.startExp() );
         builder.color().text( " --" );
-        builder.color( utils.COLOR_HIGHLIGHT ).text( epCalc.dailyExp );
+        builder.coloredValue( epCalc.dailyExp, 0, epCalc.softCapStart );
         builder.color().text( "--> " );
         builder.color( utils.COLOR_VALUE ).text( epCalc.totalExp );
         messages.push( builder.toHtml() );
         builder.clear();
-        builder.color( utils.COLOR_HIGHLIGHT ).text( epCalc.leftDailyBonusExp( true ) );
+        builder.coloredValue( epCalc.leftDailyBonusExp( true ), epCalc.softCapStart );
         builder.color().text( "/" );
-        builder.color( utils.COLOR_VALUE ).text( epCalc.softCapStart() );
+        builder.value( epCalc.softCapStart );
         builder.color().text( " [" );
-        builder.color( utils.COLOR_VALUE ).text( epCalc.leftDailyBonusExp( false ) );
+        builder.value( epCalc.leftDailyBonusExp( false ) );
         builder.color().text( "/" );
-        builder.color( utils.COLOR_VALUE ).text( epCalc.softCap );
+        builder.value( epCalc.softCap );
         builder.color().text( "]" );
         messages.push( builder.toHtml() );
         builder.clear();
         builder.text( "EP-LVL: " );
-        builder.color( utils.COLOR_VALUE ).text( epCalc.level );
+        builder.value( epCalc.level );
         builder.color().text( "  EP: " );
-        builder.color( utils.COLOR_VALUE ).text( epCalc.usedEP );
+        builder.value( epCalc.usedEP );
         builder.color().text( "/" );
         builder.color( utils.COLOR_HIGHLIGHT ).text( epCalc.totalEP );
-        builder.color( utils.COLOR_VALUE ).text( ` +${epCalc.leftEP()}` );
+        builder.value( ` +${epCalc.leftEP()}` );
         messages.push( builder.toHtml() );
 
         messages.map( x => {

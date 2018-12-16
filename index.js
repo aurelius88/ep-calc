@@ -2,6 +2,8 @@ const SOFT_CAP_CHANGE_START = 0.88947365;
 const SOFT_CAP_CHANGE_END = SOFT_CAP_CHANGE_START + 0.2;
 const SOFT_CAP_MOD_BEFORE = 1;
 const SOFT_CAP_MOD_AFTER = 0.05;
+const EP_EXP_BONUS_50 = 1.5;
+const EP_EXP_BONUS_100 = 2;
 const VANGUARD_BONUS_MOD = 1.3;
 const CATCH_UP_CHANGE_START = 358;
 const CATCH_UP_CHANGE_END = 458;
@@ -116,7 +118,7 @@ class EPCalc {
     }
 
     static calcLeftExp( ep, expPercentStart, expPercentEnd ) {
-        return 0; // dummy
+        return 0; // FIXME dummy
     }
 
     /**
@@ -143,7 +145,21 @@ class EPCalc {
         return epExp > 0 ? Math.max( Math.floor( leftExp / epExp ), 0 ) : 0;
     }
 
-    nextHightestEPSource() {}
+    get nextHightestEPSource() {
+        let sourceCounts = this.countAllEPSources();
+        let highestSource = null;
+        for ( let source in sourceCounts ) {
+            if ( sourceCounts[source] < 1 ) continue;
+            if ( !highestSource ) {
+                highestSource = source;
+                continue;
+            }
+            let highestExp = EP_TABLE.get( highestSource ).exp;
+            let currentExp = EP_TABLE.get( source ).exp;
+            if ( currentExp > highestExp ) highestSource = source;
+        }
+        return { source: highestSource, count: sourceCounts[highestSource] };
+    }
 
     /**
      * The start value of the soft cap. At how much ep exp the soft cap
@@ -158,7 +174,7 @@ class EPCalc {
      * The EP experience you started with this day.
      * @return {BigInt} the start EP exp of this day.
      */
-    startExp() {
+    get startExp() {
         return this.totalExp - BigInt( this.dailyExp );
     }
 
@@ -166,7 +182,7 @@ class EPCalc {
      * The unused EP.
      * @return {number} the unused EP.
      */
-    leftEP() {
+    get leftEP() {
         return this.totalEP - this.usedEP;
     }
 
@@ -174,7 +190,7 @@ class EPCalc {
      * (Approximatly) calculates your catch up modifier.
      * @return {number} your catch up modifier based on your EP.
      */
-    calcCatchUpMod() {
+    get calcCatchUpMod() {
         return EPCalc.calcCatchUpMod( this.totalEP );
     }
 
@@ -194,7 +210,7 @@ class EPCalc {
      * (Approximatly) calculates your soft cap modifier.
      * @return {number} your soft cap modifier.
      */
-    calcSoftCapMod() {
+    get calcSoftCapMod() {
         return EPCalc.calcSoftCapMod( this.dailyExp, this.softCap );
     }
 
@@ -246,9 +262,19 @@ module.exports = function ep_calculator( mod ) {
     mod.hook( "S_PLAYER_CHANGE_EP", 1, { order: 0 }, e => {
         if ( tracking ) {
             if ( verbose ) {
-                printShortEPStatus();
-            } else {
                 printLongEPStatus();
+            } else {
+                printShortEPStatus();
+            }
+        }
+    });
+
+    mod.hook( "S_CHANGE_EP_EXP_DAILY_LIMIT", 1, () => {
+        if ( tracking ) {
+            if ( verbose ) {
+                printLongEPStatus();
+            } else {
+                printShortEPStatus();
             }
         }
     });
@@ -262,10 +288,15 @@ module.exports = function ep_calculator( mod ) {
 
     function printShortEPStatus() {
         let msg = new MessageBuilder();
+        let nextHighest = epCalc.nextHightestEPSource;
         msg.color( utils.COLOR_HIGHLIGHT ).text( `+${epCalc.lastDiff}  ` );
-        let xpToCap = epCalc.expToCap();
-        msg.color( `rgb(40,255,40)` ).text();
-
+        msg.coloredValue( epCalc.leftDailyBonusExp( true ), epCalc.softCapStart );
+        msg.color().text( " --> " );
+        msg.text(
+            `${nextHighest.count}x ${
+                locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]
+            }`
+        );
         utils.printMessage( msg.toHtml() );
     }
 
@@ -302,6 +333,14 @@ module.exports = function ep_calculator( mod ) {
             }
             utils.printMessage( cmdMsg.toHtml() );
         },
+        highest: function() {
+            let nextHighest = epCalc.nextHightestEPSource;
+            utils.printMessage(
+                `${nextHighest.count}x ${
+                    locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]
+                }`
+            );
+        },
         count: printEpSourcesCount,
         "catch-up-mod": function( ep ) {
             if ( !ep ) return printHelpList( this.help["catch-up-mod"]);
@@ -312,7 +351,7 @@ module.exports = function ep_calculator( mod ) {
         "soft-cap-mod": function( dailyExp, softCap ) {
             if ( !softCap || !dailyExp ) return printHelpList( this.help["soft-cap-mod"]);
             cmdMsg.clear();
-            cmdMsg.color( utils.COLOR_VALUE ).text( EPCalc.calcSoftCapMod( parseInt( dailyExp ), parseInt( softCap ) ) );
+            cmdMsg.value( EPCalc.calcSoftCapMod( parseInt( dailyExp ), parseInt( softCap ) ) );
             utils.printMessage( cmdMsg.toHtml() );
         },
         lang: function( lang ) {
@@ -326,11 +365,11 @@ module.exports = function ep_calculator( mod ) {
             long() {
                 cmdMsg.clear();
                 cmdMsg.text( "USAGE: " );
-                cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                cmdMsg.command( ROOT_COMMAND );
                 cmdMsg.color().text( "\nA calculator for talent EPs." );
                 cmdMsg.text( "Calculate all things around EP, like soft cap, modifiers, sources of EP, EP exp." );
                 cmdMsg.text( "May calculate the best method on how to get to the soft cap (not yet implemented). " );
-                cmdMsg.text( `For more help use ${ROOT_COMMAND} help [subcommand]. Subcommands are listed below.` );
+                cmdMsg.text( `For more help use "${ROOT_COMMAND} help [subcommand]". Subcommands are listed below.` );
                 return cmdMsg.toHtml();
             },
             short() {
@@ -340,7 +379,7 @@ module.exports = function ep_calculator( mod ) {
                 long() {
                     cmdMsg.clear();
                     cmdMsg.text( "USAGE: " );
-                    cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                    cmdMsg.command( ROOT_COMMAND );
                     cmdMsg.color().text( " info" );
                     return cmdMsg.toHtml();
                 },
@@ -351,15 +390,45 @@ module.exports = function ep_calculator( mod ) {
                     printHelpList( this.help.info );
                 }
             },
+            track: {
+                long() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.command( ROOT_COMMAND );
+                    cmdMsg.color().text( " track" );
+                    return cmdMsg.toHtml();
+                },
+                short() {
+                    return "Tracks information about gained EP exp and EP exp left until start of soft cap.";
+                },
+                $default() {
+                    printHelpList( this.help.track );
+                }
+            },
+            verbose: {
+                long() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.command( ROOT_COMMAND );
+                    cmdMsg.color().text( " verbose" );
+                    return cmdMsg.toHtml();
+                },
+                short() {
+                    return "Printing more detailed information when tracking is enabled.";
+                },
+                $default() {
+                    printHelpList( this.help.verbose );
+                }
+            },
             "catch-up-mod": {
                 long() {
                     cmdMsg.clear();
                     cmdMsg.text( "USAGE: " );
-                    cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                    cmdMsg.command( ROOT_COMMAND );
                     cmdMsg.color().text( " catch-up-mod " );
-                    cmdMsg.color( utils.COLOR_VALUE ).text( "EP" );
+                    cmdMsg.value( "EP" );
                     cmdMsg.color().text( "\nWhere...\n" );
-                    cmdMsg.color( utils.COLOR_VALUE ).text( "EP" );
+                    cmdMsg.value( "EP" );
                     cmdMsg.color().text( " is the EP you want to calculate the catch up modifier from." );
                     return cmdMsg.toHtml();
                 },
@@ -374,25 +443,22 @@ module.exports = function ep_calculator( mod ) {
                 long() {
                     cmdMsg.clear();
                     cmdMsg.text( "USAGE: " );
-                    cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                    cmdMsg.command( ROOT_COMMAND );
                     cmdMsg.color().text( " soft-cap-mod " );
-                    cmdMsg
-                        .color( utils.COLOR_VALUE )
-                        .text( "daily-exp " )
-                        .text( "soft-cap" );
+                    cmdMsg.value( "daily-exp " ).text( "soft-cap" );
                     cmdMsg.color().text( "\nWhere...\n" );
-                    cmdMsg.color( utils.COLOR_VALUE ).text( "daily-exp" );
+                    cmdMsg.value( "daily-exp" );
                     cmdMsg.color().text( " is the exp gained so far and\n" );
-                    cmdMsg.color( utils.COLOR_VALUE ).text( "soft-cap" );
+                    cmdMsg.value( "soft-cap" );
                     cmdMsg.color().text( " is the soft cap you want to use for." );
                     return cmdMsg.toHtml();
                 },
                 short() {
                     cmdMsg.clear();
                     cmdMsg.text( "Returns the soft cap modifier by a given " );
-                    cmdMsg.color( utils.COLOR_VALUE ).text( "daily-exp" );
-                    cmdMsg.text( "Returns the soft cap modifier by a given " );
-                    cmdMsg.color( utils.COLOR_VALUE ).text( "soft-cap" );
+                    cmdMsg.value( "daily-exp" );
+                    cmdMsg.color().text( " and " );
+                    cmdMsg.value( "soft-cap" );
                     cmdMsg.color().text( "." );
                     return cmdMsg.toHtml();
                 },
@@ -404,7 +470,7 @@ module.exports = function ep_calculator( mod ) {
                 long() {
                     cmdMsg.clear();
                     cmdMsg.text( "USAGE: " );
-                    cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                    cmdMsg.command( ROOT_COMMAND );
                     cmdMsg.color().text( " count" );
                     return cmdMsg.toHtml();
                 },
@@ -422,7 +488,7 @@ module.exports = function ep_calculator( mod ) {
                 long() {
                     cmdMsg.clear();
                     cmdMsg.text( "USAGE: " );
-                    cmdMsg.color( utils.COLOR_COMMAND ).text( ROOT_COMMAND );
+                    cmdMsg.command( ROOT_COMMAND );
                     cmdMsg.color().text( " lang [language-code]" );
                     return cmdMsg.toHtml();
                 },
@@ -491,16 +557,12 @@ module.exports = function ep_calculator( mod ) {
         messages.push( builder.toHtml() );
         builder.clear();
         builder.text( "Catch Up modifier: " );
-        builder
-            .color( utils.COLOR_VALUE )
-            .text( epCalc.catchUpMod ? epCalc.catchUpMod : EPCalc.calcCatchUpMod( epCalc.totalEP ) );
+        builder.color( utils.COLOR_VALUE ).text( epCalc.catchUpMod ? epCalc.catchUpMod : epCalc.calcCatchUpMod );
         builder.color().text( ", Soft Cap modifier: " );
-        builder
-            .color( utils.COLOR_VALUE )
-            .text( epCalc.softCapMod ? epCalc.softCapMod : EPCalc.calcSoftCapMod( epCalc.dailyExp, epCalc.softCap ) );
+        builder.color( utils.COLOR_VALUE ).text( epCalc.softCapMod ? epCalc.softCapMod : epCalc.calcSoftCapMod );
         messages.push( builder.toHtml() );
         builder.clear();
-        builder.color( utils.COLOR_VALUE ).text( epCalc.startExp() );
+        builder.color( utils.COLOR_VALUE ).text( epCalc.startExp );
         builder.color().text( " --" );
         builder.coloredValue( epCalc.dailyExp, 0, epCalc.softCapStart );
         builder.color().text( "--> " );
@@ -523,7 +585,7 @@ module.exports = function ep_calculator( mod ) {
         builder.value( epCalc.usedEP );
         builder.color().text( "/" );
         builder.color( utils.COLOR_HIGHLIGHT ).text( epCalc.totalEP );
-        builder.value( ` +${epCalc.leftEP()}` );
+        builder.value( ` +${epCalc.leftEP}` );
         messages.push( builder.toHtml() );
 
         messages.map( x => {

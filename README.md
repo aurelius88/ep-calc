@@ -13,16 +13,16 @@ A module for tera proxy that is able to calculate with talent EPs.
 
 # Install
 
-1. Create directory in tera ``.../tera proxy/bin/node_modules/`` and name it e.g. ep-calc
+1. Create directory in tera ``.../tera proxy/mods/`` and name it e.g. ep-calc
 2. download [module.json][4] to the created folder
 3. start [Caali Tera Proxy][5] to auto install it
 
 # Dependencies
 
-**Note:** This module might only work with [Caali Tera Proxy][5]. Not tested with others. 
+**Note:** This module might only work with [Caali Tera Proxy][5]. Not tested with others.
 
-It depends on [util-lib][3]. You don't need to install it manually (if using [Caali Tera Proxy][5]), 
-but if you like/need to you need to name the directory to "util-lib". 
+It depends on [util-lib][3]. You don't need to install it manually (if using [Caali Tera Proxy][5]),
+but if you like/need to you need to name the directory to "util-lib".
 Otherwise the module won't detect it.
 
 # ToDo

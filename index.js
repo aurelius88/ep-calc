@@ -146,9 +146,7 @@ class EPCalc {
      * @return {number}            the number of sources a char can do.
      */
     static countEPSource( ep, leftExp, epTableKey ) {
-        let epObj = EP_TABLE.get( epTableKey );
-        let epExp = epObj.exp * ( this._totalEP === ep ? this._catchUpMod : EPCalc.calcCatchUpMod( ep ) );
-        epExp *= epObj.isQuest ? VANGUARD_BONUS_MOD : 1;
+        let epExp = EPCalc.bonusExp( ep, epTableKey );
         return epExp > 0 ? Math.max( Math.floor( leftExp / epExp ), 0 ) : 0;
     }
 
@@ -171,7 +169,7 @@ class EPCalc {
         }
         return highestSource ?
             { source: highestSource, count: sourceCounts[highestSource] }
-            : { source: "BAM", count: 0 };
+            : { source: "bam", count: 0 };
     }
 
     /**
@@ -287,6 +285,7 @@ class EPCalc {
 
     static bonusExp( ep, source ) {
         let epObj = EP_TABLE.get( source );
+        if ( !epObj ) return 0;
         let epExp = epObj.exp * ( this._totalEP === ep ? this._catchUpMod : EPCalc.calcCatchUpMod( ep ) );
         epExp *= epObj.isQuest ? VANGUARD_BONUS_MOD : 1;
         return epExp;
@@ -340,33 +339,36 @@ module.exports = function ep_calculator( mod ) {
 
     function shortEPStatus() {
         let msg = new MessageBuilder();
-        let nextHighest = epCalc.nextHightestEPSource;
         msg.color( utils.COLOR_HIGHLIGHT ).text( `+${epCalc.lastDiff} ` );
         msg.color().text( `XP ${epCalc.levelUp ? "(Level UP!) " : " "}` );
         msg.coloredValue( epCalc.leftDailyBonusExp( true ), epCalc.softCapStart );
-        msg.color().text( " --> " );
-        msg.text(
-            `${nextHighest.count}x ${
-                locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]
-            } (`
-        );
-        let leftExp = Math.floor(
-            epCalc.leftDailyBonusExp( true ) - nextHighest.count * EPCalc.bonusExp( epCalc.totalEP, nextHighest.source )
-        );
+        let nextHighest = epCalc.nextHightestEPSource;
+        let leftExp = epCalc.leftDailyBonusExp( true );
+        if ( nextHighest && nextHighest.count ) {
+            msg.color().text( " --> " );
+            msg.text(
+                `${nextHighest.count}x ${
+                    locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]
+                } (`
+            );
+            leftExp -= Math.floor( nextHighest.count * EPCalc.bonusExp( epCalc.totalEP, nextHighest.source ) );
+            msg.coloredValue( leftExp, epCalc.softCapStart );
+            msg.color().text( ")" );
+        }
         let secondNextHighest = EPCalc.calcNextHighestEPSource( epCalc.totalEP, leftExp );
-        msg.coloredValue( leftExp, epCalc.softCapStart );
-        msg.color().text( ")" );
-        msg.text(
-            ` + ${secondNextHighest.count}x ${
-                locales[language] ?
-                    locales[language][secondNextHighest.source]
-                    : DEFAULT_LOCALE[secondNextHighest.source]
-            } (`
-        );
-        // FIXME totalEP might change after first vanguard has been turned in
-        leftExp -= Math.floor( secondNextHighest.count * EPCalc.bonusExp( epCalc.totalEP, secondNextHighest.source ) );
-        msg.coloredValue( leftExp, epCalc.softCapStart );
-        msg.color().text( ")" );
+        if ( secondNextHighest && secondNextHighest.count ) {
+            msg.text(
+                ` + ${secondNextHighest.count}x ${
+                    locales[language] ?
+                        locales[language][secondNextHighest.source]
+                        : DEFAULT_LOCALE[secondNextHighest.source]
+                } (`
+            );
+            // FIXME totalEP might change after first vanguard has been turned in
+            leftExp -= Math.floor( secondNextHighest.count * EPCalc.bonusExp( epCalc.totalEP, secondNextHighest.source ) );
+            msg.coloredValue( leftExp, epCalc.softCapStart );
+            msg.color().text( ")" );
+        }
         return msg.toHtml();
     }
 

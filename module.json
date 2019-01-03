@@ -2,11 +2,11 @@
     "disableAutoUpdate": false,
     "name": "ep-calc",
     "author": "aurelius88",
-    "description": "Calculate all things around EP, like soft cap, modifiers, sources of EP, EP exp, etc.",
-    "version": "0.1",
+    "description": "Calculate all things around EP. Like soft cap, modifiers, sources of EP, EP exp, etc.",
+    "version": "0.3",
     "options": {
         "niceName": "EP-Calc",
-        "settingsVersion": 1,
+        "settingsVersion": 2,
         "settingsFile": "config.json",
         "settingsMigrator": "settings_migrator.js"
     },

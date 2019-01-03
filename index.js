@@ -59,6 +59,8 @@ const DEFAULT_LOCALE = {
     levelUp65_1: "Level up -> 65 (1st char)"
 };
 
+const SettingsUI = require( "tera-mod-ui" ).Settings;
+
 class EPCalc {
     constructor( mod ) {
         mod.hook( "S_LOAD_EP_INFO", 1, e => {
@@ -309,12 +311,9 @@ module.exports = function ep_calculator( mod ) {
     const configData = mod.settings;
     const command = mod.command;
 
-    let tracking = false;
-    let verbose = false;
-
     mod.hook( "S_PLAYER_CHANGE_EP", 1, { order: 0 }, e => {
-        if ( tracking ) {
-            if ( verbose ) {
+        if ( configData.tracking ) {
+            if ( configData.verbose ) {
                 printLongEPStatus();
             } else {
                 printShortEPStatus();
@@ -323,8 +322,8 @@ module.exports = function ep_calculator( mod ) {
     });
 
     mod.hook( "S_CHANGE_EP_EXP_DAILY_LIMIT", 1, () => {
-        if ( tracking ) {
-            if ( verbose ) {
+        if ( configData.tracking ) {
+            if ( configData.verbose ) {
                 printLongEPStatus();
             } else {
                 printShortEPStatus();
@@ -388,27 +387,24 @@ module.exports = function ep_calculator( mod ) {
         $default() {
             printHelpList( this.help );
         },
+        config: function() {
+            if ( ui ) {
+                ui.show();
+            }
+        },
         info: showEPStatus,
         track: function() {
-            tracking = !tracking;
+            configData.tracking = !configData.tracking;
             cmdMsg.clear();
             cmdMsg.text( "tracking " );
-            if ( tracking ) {
-                cmdMsg.color( utils.COLOR_ENABLE ).text( "enabled" );
-            } else {
-                cmdMsg.color( utils.COLOR_DISABLE ).text( "disabled" );
-            }
+            appendBool( cmdMsg, configData.tracking );
             utils.printMessage( cmdMsg.toHtml() );
         },
         verbose: function() {
-            verbose = !verbose;
+            configData.verbose = !configData.verbose;
             cmdMsg.clear();
             cmdMsg.text( "verbose " );
-            if ( verbose ) {
-                cmdMsg.color( utils.COLOR_ENABLE ).text( "enabled" );
-            } else {
-                cmdMsg.color( utils.COLOR_DISABLE ).text( "disabled" );
-            }
+            appendBool( cmdMsg, configData.verbose );
             utils.printMessage( cmdMsg.toHtml() );
         },
         highest: function() {
@@ -444,14 +440,33 @@ module.exports = function ep_calculator( mod ) {
                 cmdMsg.clear();
                 cmdMsg.text( "USAGE: " );
                 cmdMsg.command( ROOT_COMMAND );
-                cmdMsg.color().text( "\nA calculator for talent EPs." );
-                cmdMsg.text( "Calculate all things around EP, like soft cap, modifiers, sources of EP, EP exp." );
+                cmdMsg.color().text( "\nA calculator for talent EPs. " );
+                cmdMsg.text( "Calculate all things around EP, like soft cap, modifiers, sources of EP, EP exp. " );
                 cmdMsg.text( "May calculate the best method on how to get to the soft cap (not yet implemented). " );
                 cmdMsg.text( `For more help use "${ROOT_COMMAND} help [subcommand]". Subcommands are listed below.` );
+                cmdMsg.text( "\nVerbose " );
+                appendBool( cmdMsg, configData.verbose );
+                cmdMsg.text( "\nTracking " );
+                appendBool( cmdMsg, configData.tracking );
                 return cmdMsg.toHtml();
             },
             short() {
                 return "The EP calculator.";
+            },
+            config: {
+                long() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.command( ROOT_COMMAND );
+                    cmdMsg.color().text( " config" );
+                    return cmdMsg.toHtml();
+                },
+                short() {
+                    return "Opens a window for configuration if proxy is running in gui mode.";
+                },
+                $default() {
+                    printHelpList( this.help.config );
+                }
             },
             info: {
                 long() {
@@ -626,6 +641,15 @@ module.exports = function ep_calculator( mod ) {
         }
     }
 
+    function appendBool( msgBuilder, value ) {
+        if ( value ) {
+            msgBuilder.color( utils.COLOR_ENABLE ).text( "enabled" );
+        } else {
+            msgBuilder.color( utils.COLOR_DISABLE ).text( "disabled" );
+        }
+        return msgBuilder.color();
+    }
+
     function showEPStatus() {
         let builder = new MessageBuilder();
         let messages = [];
@@ -667,5 +691,21 @@ module.exports = function ep_calculator( mod ) {
         messages.map( x => {
             utils.printMessage( x );
         });
+    }
+    // Settings UI
+    let ui = null;
+    if ( global.TeraProxy.GUIMode ) {
+        let structure = require( "./settings_structure" );
+        ui = new SettingsUI( mod, structure, mod.settings, { height: 232 });
+        ui.on( "update", settings => {
+            mod.settings = settings;
+        });
+
+        this.destructor = () => {
+            if ( ui ) {
+                ui.close();
+                ui = null;
+            }
+        };
     }
 };

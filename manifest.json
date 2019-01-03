@@ -1,12 +1,13 @@
 {
     "files": {
-        "index.js": "d0071f2c3aed8bbb3e074ce060985373d3fb2e280f1763a4cae50d88d51cfc6f",
-        "module.json": "42a07c8ef5905eefe450a31573e38e91cb87d34eac0c2125fe3852ac5a828bb9",
-        "locale/locale-de.json": "463691403581713d2892d8c6eba17386c36e3447329ab8f0d9133a7d0d51557c",
-        "locale/locale-fr.json": "9eb9d665ff69381501bcb84f9aba62f1b0a6bac12641812cdc0c959cc11f31ec",
-        "locale/locale-en.json": "e497cf1ac413c06bd261ad09e0b0fc0818135b652bda6a02d90eea62a1777e78",
+        "index.js": "09eb450d77bec6905f04bc8150c97bf4b3afaaff20ed2d4d342f2a232e9fa31d",
+        "module.json": "8772eecc9d8708aa2c3770e808cda4a6c86e244895bd05aa363e59cb66f8179a",
         "README.md": "828c690e68ae6ee48ce77ddb970c75791ef548c880514cf4da60526d6f5fa333",
-        "settings_migrator.js": "83543fa4e397ac75d7228eafb957d3a1810dee60c516943be3cedf24f60a1a93"
+        "settings_migrator.js": "c7fe7dbec947ba6098c45b3683a4468f94bbb58852986000402d63de9a8e8ecc",
+        "settings_structure.js": "3f1aaa8b3a2a7e265dfc4e5e113bf6cbfaf722b1aae3a97e73527861f6e4fd7b",
+        "locale/locale-de.json": "463691403581713d2892d8c6eba17386c36e3447329ab8f0d9133a7d0d51557c",
+        "locale/locale-en.json": "e497cf1ac413c06bd261ad09e0b0fc0818135b652bda6a02d90eea62a1777e78",
+        "locale/locale-fr.json": "9eb9d665ff69381501bcb84f9aba62f1b0a6bac12641812cdc0c959cc11f31ec"
     },
     "defs": {}
 }

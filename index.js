@@ -1,3 +1,5 @@
+const binarySearch = require( "binary-search" );
+
 const SOFT_CAP_CHANGE_START = 0.88947365;
 const SOFT_CAP_CHANGE_END = SOFT_CAP_CHANGE_START + 0.2;
 const SOFT_CAP_MOD_BEFORE = 1;
@@ -38,6 +40,35 @@ const EP_TABLE = new Map([
 // enchant stormcry +8 -> 100
 // enchant stormcry +9 -> 300
 
+const SOFT_CAP_TABLE = new Map([
+    [1, 1002],
+    [3, 501],
+    [6, 802],
+    [12, 902],
+    [23, 952],
+    [25, 989],
+    [34, 995],
+    [45, 996],
+    [54, 998],
+    [57, 1494.3],
+    [132, 1497.3],
+    [133, 1996.6],
+    [199, 1998],
+    [200, 2497.3],
+    [264, 2497.3],
+    [265, 2997],
+    [324, 2997],
+    [325, 3496.3],
+    [358, 3496.3],
+    [385, 3496.3],
+    [386, 3995],
+    [442, 3995],
+    [443, 4494.2],
+    [498, 4494.2],
+    [499, 4994.4],
+    [500, 0]
+]);
+
 const DEFAULT_LOCALE = {
     batuDesert: "Batu Desert",
     dungeon439: "493+ dungeon",
@@ -63,6 +94,10 @@ const SettingsUI = require( "tera-mod-ui" ).Settings;
 
 class EPCalc {
     constructor( mod ) {
+        this.mod = mod;
+        this._lastDiff = 0;
+        this._levelUp = false;
+
         mod.hook( "S_LOAD_EP_INFO", 1, e => {
             this._level = e.level;
             this._totalEP = e.totalPoints;
@@ -70,14 +105,7 @@ class EPCalc {
             this._dailyExp = e.dailyExp;
             this._softCap = e.dailyExpMax;
             this._usedEP = e.usedPoints;
-            this._catchUpMod = this._catchUpMod ? this._catchUpMod : this.calcCatchUpMod;
-            this._softCapMod = this._softCapMod ? this._softCapMod : this.calcSoftCapMod;
         });
-
-        this._lastDiff = 0;
-        this._levelUp = false;
-        this._catchUpMod = 0; // catch up modifier
-        this._softCapMod = 0; // soft cap modifier
 
         mod.hook( "S_PLAYER_CHANGE_EP", 1, { order: -100 }, e => {
             this._level = e.level;
@@ -186,7 +214,18 @@ class EPCalc {
     }
 
     get softCap() {
-        return this._softCap;
+        return this._softCap == undefined ? this.calcSoftCap() : this._softCap;
+    }
+
+    calcSoftCap() {
+        return EPCalc.calcSoftCap( this._totalEP );
+    }
+
+    static calcSoftCap( ep ) {
+        let keys = Array.from( SOFT_CAP_TABLE.keys() );
+        let foundKey = binarySearch( keys, ep, ( keyA, keyB ) => keyA - keyB );
+        if ( foundKey < 0 ) foundKey = ~foundKey;
+        return Math.floor( SOFT_CAP_TABLE.get( foundKey ) * EPCalc.calcCatchUpMod( ep ) );
     }
 
     get totalExp() {
@@ -221,12 +260,12 @@ class EPCalc {
      * (Approximatly) calculates your catch up modifier.
      * @return {number} your catch up modifier based on your EP.
      */
-    get calcCatchUpMod() {
+    calcCatchUpMod() {
         return EPCalc.calcCatchUpMod( this._totalEP );
     }
 
     get catchUpMod() {
-        return this._catchUpMod;
+        return this._catchUpMod == undefined ? this.calcCatchUpMod() : this._catchUpMod;
     }
 
     /**
@@ -245,12 +284,12 @@ class EPCalc {
      * (Approximatly) calculates your soft cap modifier.
      * @return {number} your soft cap modifier.
      */
-    get calcSoftCapMod() {
+    calcSoftCapMod() {
         return EPCalc.calcSoftCapMod( this._dailyExp, this._softCap );
     }
 
     get softCapMod() {
-        return this._softCapMod;
+        return this._softCapMod == undefined ? this.calcSoftCapMod() : this._softCapMod;
     }
 
     /**
@@ -262,6 +301,7 @@ class EPCalc {
     static calcSoftCapMod( dailyExp, softCap ) {
         if ( typeof dailyExp !== "number" || typeof softCap !== "number" )
             throw new TypeError( "Argument should be a Number." );
+        if ( softCap == 0 ) return 0;
         let softCapRatio = dailyExp / softCap;
         if ( softCapRatio < SOFT_CAP_CHANGE_START ) return SOFT_CAP_MOD_BEFORE;
         if ( softCapRatio > SOFT_CAP_CHANGE_END ) return SOFT_CAP_MOD_AFTER;

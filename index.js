@@ -1,3 +1,5 @@
+const binarySearch = require( "binary-search" );
+
 const SOFT_CAP_CHANGE_START = 0.88947365;
 const SOFT_CAP_CHANGE_END = SOFT_CAP_CHANGE_START + 0.2;
 const SOFT_CAP_MOD_BEFORE = 1;
@@ -11,32 +13,90 @@ const CATCH_UP_MOD_BEFORE = 3;
 const CATCH_UP_MOD_AFTER = 0.1;
 const SOFT_CAP_GRADIENT = ( SOFT_CAP_MOD_BEFORE - SOFT_CAP_MOD_AFTER ) / ( SOFT_CAP_CHANGE_START - SOFT_CAP_CHANGE_END );
 const CATCH_UP_GRADIENT = ( CATCH_UP_MOD_BEFORE - CATCH_UP_MOD_AFTER ) / ( CATCH_UP_CHANGE_START - CATCH_UP_CHANGE_END );
+const BAM_SOURCE = "bam";
+const CRUCIAL_BAM_COUNT = 12;
 
 const EP_TABLE = new Map([
-    ["batuDesert", { exp: 2000.0, expAfterLimit: 1600.0, isQuest: true, limit: 16, asFiller: false }],
-    ["dungeon439", { exp: 1518.65, expAfterLimit: 1215.0, isQuest: true, limit: 16, asFiller: true }],
-    ["CorsairsFraywindSkyring", { exp: 1518.65, expAfterLimit: 1215.0, isQuest: true, limit: 16, asFiller: false }],
-    ["dungeon431", { exp: 1418.0, expAfterLimit: 1134.0, isQuest: true, limit: 16, asFiller: true }],
-    ["dungeon412", { exp: 1267.7, expAfterLimit: 1012.0, isQuest: true, limit: 16, asFiller: true }],
-    ["levelUp65_2", { exp: 1000.0, expAfterLimit: 1000.0, isQuest: false, limit: 1, asFiller: false }],
-    ["islandOfDawn", { exp: 911.6, expAfterLimit: 729.0, isQuest: true, limit: 16, asFiller: true }],
-    ["echoesOfAranea", { exp: 911.0, expAfterLimit: 0, isQuest: true, limit: 16, asFiller: true }],
-    ["kumasIronBG", { exp: 843.0, expAfterLimit: 0, isQuest: true, limit: 16, asFiller: false }],
-    ["fishing", { exp: 646.67, expAfterLimit: 517.3, isQuest: true, limit: 1, asFiller: true }],
-    ["guardianAndFlyingVanguard", { exp: 500.0, expAfterLimit: 400.0, isQuest: true, limit: 16, asFiller: true }],
-    ["pitOfPetrax", { exp: 454.65, expAfterLimit: 363, isQuest: true, limit: 16, asFiller: true }],
-    ["celestialArena", { exp: 425.0, expAfterLimit: 340, isQuest: true, limit: 16, asFiller: true }],
-    ["aceDungeons", { exp: 303.0, expAfterLimit: 242.4, isQuest: true, limit: 16, asFiller: true }],
-    ["kill30Quest", { exp: 270.0, expAfterLimit: 216, isQuest: true, limit: 16, asFiller: true }],
-    ["gather30Quest", { exp: 180.0, expAfterLimit: 144, isQuest: true, limit: 16, asFiller: true }],
-    ["bam", { exp: 10.0, expAfterLimit: 10.0, isQuest: false, limit: -1, asFiller: true }],
-    ["levelUp65_1", { exp: 1.0, expAfterLimit: 1.0, isQuest: false, limit: 1, asFiller: false }]
+    [
+        "batuDesert",
+        { exp: 2000.0, expAfterLimit: 1600.0, isQuest: true, limit: 16, asFiller: false, time: 1200, bams: 0 }
+    ],
+    [
+        "dungeon439",
+        { exp: 1518.65, expAfterLimit: 1215.0, isQuest: true, limit: 16, asFiller: true, time: 720, bams: 0 }
+    ],
+    [
+        "CorsairsFraywindSkyring",
+        { exp: 1518.65, expAfterLimit: 1215.0, isQuest: true, limit: 16, asFiller: false, time: 1200, bams: 0 }
+    ],
+    [
+        "dungeon431",
+        { exp: 1418.0, expAfterLimit: 1134.0, isQuest: true, limit: 16, asFiller: true, time: 360, bams: 3 }
+    ],
+    [
+        "dungeon412",
+        { exp: 1267.7, expAfterLimit: 1012.0, isQuest: true, limit: 16, asFiller: true, time: 180, bams: 3 }
+    ],
+    [
+        "levelUp65_2",
+        { exp: 1000.0, expAfterLimit: 1000.0, isQuest: false, limit: 1, asFiller: false, time: -1, bams: 0 }
+    ],
+    [
+        "islandOfDawn",
+        { exp: 911.6, expAfterLimit: 729.0, isQuest: true, limit: 16, asFiller: true, time: 80, bams: 10 }
+    ],
+    ["echoesOfAranea", { exp: 911.0, expAfterLimit: 0, isQuest: true, limit: 16, asFiller: true, time: 120, bams: 0 }],
+    ["kumasIronBG", { exp: 843.0, expAfterLimit: 0, isQuest: true, limit: 16, asFiller: false, time: 1200, bams: 0 }],
+    ["fishing", { exp: 646.67, expAfterLimit: 517.3, isQuest: true, limit: 1, asFiller: true, time: 120, bams: 0 }],
+    [
+        "guardianAndFlyingVanguard",
+        { exp: 500.0, expAfterLimit: 400.0, isQuest: true, limit: 16, asFiller: true, time: 240, bams: 0 }
+    ],
+    ["pitOfPetrax", { exp: 454.65, expAfterLimit: 363, isQuest: true, limit: 3, asFiller: true, time: 60, bams: 1 }],
+    [
+        "celestialArena",
+        { exp: 425.0, expAfterLimit: 340, isQuest: true, limit: 16, asFiller: true, time: 300, bams: 0 }
+    ],
+    ["aceDungeons", { exp: 303.0, expAfterLimit: 242.4, isQuest: true, limit: 16, asFiller: true, time: 150, bams: 4 }],
+    ["kill30Quest", { exp: 270.0, expAfterLimit: 216, isQuest: true, limit: 16, asFiller: true, time: 300, bams: 0 }],
+    ["gather30Quest", { exp: 180.0, expAfterLimit: 144, isQuest: true, limit: 16, asFiller: true, time: 180, bams: 0 }],
+    [BAM_SOURCE, { exp: 10.0, expAfterLimit: 10.0, isQuest: false, limit: -1, asFiller: true, time: 8, bams: 0 }],
+    ["levelUp65_1", { exp: 1.0, expAfterLimit: 1.0, isQuest: false, limit: 1, asFiller: false, time: -1, bams: 0 }]
 ]);
 // enchantment isn't something you can rely on. But for the sake of completeness:
 // enchant frostmetal +8 -> 45
 // enchant frostmetal +9 -> 135
 // enchant stormcry +8 -> 100
 // enchant stormcry +9 -> 300
+
+const SOFT_CAP_TABLE = new Map([
+    [1, 1002],
+    [3, 501],
+    [6, 802],
+    [12, 902],
+    [23, 952],
+    [25, 989],
+    [34, 995],
+    [45, 996],
+    [54, 998],
+    [57, 1494.3],
+    [132, 1497.3],
+    [133, 1996.6],
+    [199, 1998],
+    [200, 2497.3],
+    [264, 2497.3],
+    [265, 2997],
+    [324, 2997],
+    [325, 3496.3],
+    [358, 3496.3],
+    [385, 3496.3],
+    [386, 3995],
+    [442, 3995],
+    [443, 4494.2],
+    [498, 4494.2],
+    [499, 4994.4],
+    [500, 0]
+]);
 
 const DEFAULT_LOCALE = {
     batuDesert: "Batu Desert",
@@ -63,6 +123,10 @@ const SettingsUI = require( "tera-mod-ui" ).Settings;
 
 class EPCalc {
     constructor( mod ) {
+        this.mod = mod;
+        this._lastDiff = 0;
+        this._levelUp = false;
+
         mod.hook( "S_LOAD_EP_INFO", 1, e => {
             this._level = e.level;
             this._totalEP = e.totalPoints;
@@ -70,14 +134,7 @@ class EPCalc {
             this._dailyExp = e.dailyExp;
             this._softCap = e.dailyExpMax;
             this._usedEP = e.usedPoints;
-            this._catchUpMod = this._catchUpMod ? this._catchUpMod : this.calcCatchUpMod;
-            this._softCapMod = this._softCapMod ? this._softCapMod : this.calcSoftCapMod;
         });
-
-        this._lastDiff = 0;
-        this._levelUp = false;
-        this._catchUpMod = 0; // catch up modifier
-        this._softCapMod = 0; // soft cap modifier
 
         mod.hook( "S_PLAYER_CHANGE_EP", 1, { order: -100 }, e => {
             this._level = e.level;
@@ -173,7 +230,7 @@ class EPCalc {
         }
         return highestSource ?
             { source: highestSource, count: sourceCounts[highestSource] }
-            : { source: "bam", count: 0 };
+            : { source: BAM_SOURCE, count: 0 };
     }
 
     /**
@@ -186,7 +243,24 @@ class EPCalc {
     }
 
     get softCap() {
-        return this._softCap;
+        return this._softCap != undefined ? this._softCap : this.calcSoftCap();
+    }
+
+    calcSoftCap() {
+        return EPCalc.calcSoftCap( this._totalEP );
+    }
+
+    /**
+     * (Approximatly) calculates the soft cap by a given ep value and using a soft cap table.
+     * @param  {number} ep the ep value.
+     * @return {number}    the soft cap by the ep value.
+     */
+    static calcSoftCap( ep ) {
+        let keys = Array.from( SOFT_CAP_TABLE.keys() );
+        let foundKey = binarySearch( keys, ep, ( keyA, keyB ) => keyA - keyB );
+        if ( foundKey < 0 ) foundKey = ~foundKey - 1;
+        if ( foundKey < 0 ) foundKey = 0;
+        return Math.floor( SOFT_CAP_TABLE.get( keys[foundKey]) * EPCalc.calcCatchUpMod( ep ) );
     }
 
     get totalExp() {
@@ -218,15 +292,19 @@ class EPCalc {
     }
 
     /**
+     * Returns the (calculated) current catch up modifier.
+     * @return {numbner} the current catch up modifier.
+     */
+    get catchUpMod() {
+        return this.calcCatchUpMod();
+    }
+
+    /**
      * (Approximatly) calculates your catch up modifier.
      * @return {number} your catch up modifier based on your EP.
      */
-    get calcCatchUpMod() {
+    calcCatchUpMod() {
         return EPCalc.calcCatchUpMod( this._totalEP );
-    }
-
-    get catchUpMod() {
-        return this._catchUpMod;
     }
 
     /**
@@ -242,15 +320,27 @@ class EPCalc {
     }
 
     /**
+     * Returns the last catch up modifier.
+     * @return {number} the last catch up modifier.
+     */
+    get lastCatchUpMod() {
+        return this._catchUpMod;
+    }
+
+    /**
+     * Returns the (calculated) current soft cap modiefier.
+     * @return {number} the current soft cap.
+     */
+    get softCapMod() {
+        return this.calcSoftCapMod();
+    }
+
+    /**
      * (Approximatly) calculates your soft cap modifier.
      * @return {number} your soft cap modifier.
      */
-    get calcSoftCapMod() {
+    calcSoftCapMod() {
         return EPCalc.calcSoftCapMod( this._dailyExp, this._softCap );
-    }
-
-    get softCapMod() {
-        return this._softCapMod;
     }
 
     /**
@@ -262,10 +352,19 @@ class EPCalc {
     static calcSoftCapMod( dailyExp, softCap ) {
         if ( typeof dailyExp !== "number" || typeof softCap !== "number" )
             throw new TypeError( "Argument should be a Number." );
+        if ( softCap == 0 ) return 0;
         let softCapRatio = dailyExp / softCap;
         if ( softCapRatio < SOFT_CAP_CHANGE_START ) return SOFT_CAP_MOD_BEFORE;
         if ( softCapRatio > SOFT_CAP_CHANGE_END ) return SOFT_CAP_MOD_AFTER;
         return ( softCapRatio - SOFT_CAP_CHANGE_START ) * SOFT_CAP_GRADIENT + SOFT_CAP_MOD_BEFORE;
+    }
+
+    /**
+     * Returns the last soft cap modifier.
+     * @return {number} the last soft cap.
+     */
+    get lastSoftCapMod() {
+        return this._softCapMod;
     }
 
     get lastDiff() {
@@ -287,11 +386,20 @@ class EPCalc {
         return this._dailyExp;
     }
 
+    applyBonusModifier( epObj ) {
+        return EPCalc.applyBonusModifier( this._totalEP, epObj, this._catchUpMod );
+    }
+
+    static applyBonusModifier( ep, epObj, catchUpMod ) {
+        if ( catchUpMod == undefined ) catchUpMod = EPCalc.calcCatchUpMod( ep );
+        return Math.floor( catchUpMod * ( epObj.isQuest ? VANGUARD_BONUS_MOD : 1 ) * epObj.exp );
+    }
+
     static bonusExp( ep, source ) {
         let epObj = EP_TABLE.get( source );
         if ( !epObj ) return 0;
-        let epExp = epObj.exp * ( this._totalEP === ep ? this._catchUpMod : EPCalc.calcCatchUpMod( ep ) );
-        epExp *= epObj.isQuest ? VANGUARD_BONUS_MOD : 1;
+        let epExp = EPCalc.applyBonusModifier( ep, epObj );
+        epExp += epObj.bams * EPCalc.applyBonusModifier( ep, EP_TABLE.get( BAM_SOURCE ) );
         return epExp;
     }
 }
@@ -303,8 +411,9 @@ const LOCALE_PATH_PART = "./locale/locale-";
 module.exports = function ep_calculator( mod ) {
     const UtilLib = mod.require["util-lib"];
     const MessageBuilder = UtilLib["message-builder"];
+    const ChatHelper = UtilLib["chat-helper"];
 
-    const utils = new UtilLib["chat-helper"]( mod );
+    const utils = new ChatHelper( mod );
     const epCalc = new EPCalc( mod );
     const fileHelper = new UtilLib["file-helper"]();
 
@@ -313,21 +422,13 @@ module.exports = function ep_calculator( mod ) {
 
     mod.hook( "S_PLAYER_CHANGE_EP", 1, { order: 0 }, e => {
         if ( configData.tracking ) {
-            if ( configData.verbose ) {
-                printLongEPStatus();
-            } else {
-                printShortEPStatus();
-            }
+            printEPStatus();
         }
     });
 
     mod.hook( "S_CHANGE_EP_EXP_DAILY_LIMIT", 1, () => {
         if ( configData.tracking ) {
-            if ( configData.verbose ) {
-                printLongEPStatus();
-            } else {
-                printShortEPStatus();
-            }
+            printEPStatus();
         }
     });
 
@@ -338,47 +439,74 @@ module.exports = function ep_calculator( mod ) {
         locales[lang] = fileHelper.loadJson( fileHelper.getFullPath( `${LOCALE_PATH_PART}${lang}.json`, __dirname ) );
     }
 
-    function shortEPStatus() {
+    function epStatus() {
         let msg = new MessageBuilder();
-        msg.color( utils.COLOR_HIGHLIGHT ).text( `+${epCalc.lastDiff} ` );
+        msg.highlight( `+${epCalc.lastDiff} ` );
         msg.color().text( `XP ${epCalc.levelUp ? "(Level UP!) " : " "}` );
-        msg.coloredValue( epCalc.leftDailyBonusExp( true ), epCalc.softCapStart );
-        let nextHighest = epCalc.nextHightestEPSource;
         let leftExp = epCalc.leftDailyBonusExp( true );
+        let leftExpAfter = leftExp;
+        msg.coloredValue( leftExp, epCalc.softCapStart ).color();
+        let nextHighest = epCalc.nextHightestEPSource;
         if ( nextHighest && nextHighest.count ) {
-            msg.color().text( " --> " );
+            msg.text( " --> " );
+            msg.coloredValue( nextHighest.count, CRUCIAL_BAM_COUNT, 1 ).color();
             msg.text(
-                `${nextHighest.count}x ${
-                    locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]
-                } (`
+                `x ${locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]} (`
             );
-            leftExp -= Math.floor( nextHighest.count * EPCalc.bonusExp( epCalc.totalEP, nextHighest.source ) );
-            msg.coloredValue( leftExp, epCalc.softCapStart );
+            if ( configData.verbose ) {
+                let nextHighestEPData = EP_TABLE.get( nextHighest.source );
+                msg.text(
+                    `${epCalc.applyBonusModifier( nextHighestEPData )} + ${nextHighestEPData.bams
+                        * epCalc.applyBonusModifier( EP_TABLE.get( BAM_SOURCE ) )} `
+                );
+            }
+            msg.text( "+ " );
+            leftExpAfter -= Math.round( nextHighest.count * EPCalc.bonusExp( epCalc.totalEP, nextHighest.source ) );
+            msg.coloredValue( leftExpAfter, epCalc.softCapStart );
             msg.color().text( ")" );
         }
-        let secondNextHighest = EPCalc.calcNextHighestEPSource( epCalc.totalEP, leftExp );
+        let secondNextHighest = EPCalc.calcNextHighestEPSource( epCalc.totalEP, leftExpAfter );
         if ( secondNextHighest && secondNextHighest.count ) {
+            msg.text( " + " );
+            msg.coloredValue( secondNextHighest.count, CRUCIAL_BAM_COUNT, 1 ).color();
             msg.text(
-                ` + ${secondNextHighest.count}x ${
+                `x ${
                     locales[language] ?
                         locales[language][secondNextHighest.source]
                         : DEFAULT_LOCALE[secondNextHighest.source]
                 } (`
             );
+            if ( configData.verbose ) {
+                let secondNextHighestEPData = EP_TABLE.get( secondNextHighest.source );
+                msg.text(
+                    `${epCalc.applyBonusModifier( secondNextHighestEPData )} ${secondNextHighestEPData.bams
+                        * epCalc.applyBonusModifier( EP_TABLE.get( BAM_SOURCE ) )} `
+                );
+            }
+            msg.text( "+ " );
             // FIXME totalEP might change after first vanguard has been turned in
-            leftExp -= Math.floor( secondNextHighest.count * EPCalc.bonusExp( epCalc.totalEP, secondNextHighest.source ) );
-            msg.coloredValue( leftExp, epCalc.softCapStart );
+            leftExpAfter -= Math.round(
+                secondNextHighest.count * EPCalc.bonusExp( epCalc.totalEP, secondNextHighest.source )
+            );
+            msg.coloredValue( leftExpAfter, epCalc.softCapStart );
             msg.color().text( ")" );
         }
+        if ( configData.verbose ) {
+            msg.text( " (" );
+            msg.text( "CU mod: " );
+            msg.coloredValue( epCalc.catchUpMod, CATCH_UP_MOD_BEFORE, CATCH_UP_MOD_AFTER );
+            msg.color().text( ", SC mod: " );
+            msg.coloredValue( epCalc.softCapMod, SOFT_CAP_MOD_BEFORE, SOFT_CAP_MOD_AFTER, SOFT_CAP_MOD_BEFORE * 0.9 );
+            msg.color().text( ")" );
+        }
+        if ( leftExp < 0 ) msg.highlight( " Soft Cap exceeded." );
+        else if ( leftExp < 30 ) msg.highlight( " Soft Cap reached!" );
+        else if ( leftExp < 300 ) msg.highlight( " WARNING: Reaching Soft Cap after few BAMs!" );
         return msg.toHtml();
     }
 
-    function printShortEPStatus() {
-        utils.printMessage( shortEPStatus() );
-    }
-
-    function printLongEPStatus() {
-        showEPStatus();
+    function printEPStatus() {
+        utils.printMessage( epStatus() );
     }
 
     let cmdMsg = new MessageBuilder();
@@ -409,6 +537,8 @@ module.exports = function ep_calculator( mod ) {
         },
         highest: function() {
             let nextHighest = epCalc.nextHightestEPSource;
+            cmdMsg.clear();
+            cmdMsg.coloredValue( epCalc.leftDailyBonusExp( true ), epCalc.softCapStart ).color();
             utils.printMessage(
                 `${nextHighest.count}x ${
                     locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]
@@ -419,7 +549,13 @@ module.exports = function ep_calculator( mod ) {
         "catch-up-mod": function( ep ) {
             if ( !ep ) return printHelpList( this.help["catch-up-mod"]);
             cmdMsg.clear();
-            cmdMsg.color( utils.COLOR_VALUE ).text( EPCalc.calcCatchUpMod( parseInt( ep ) ) );
+            cmdMsg.value( EPCalc.calcCatchUpMod( parseInt( ep ) ) );
+            utils.printMessage( cmdMsg.toHtml() );
+        },
+        "soft-cap": function( ep ) {
+            if ( !ep ) return printHelpList( this.help["soft-cap"]);
+            cmdMsg.clear();
+            cmdMsg.value( EPCalc.calcSoftCap( parseInt( ep ) ) );
             utils.printMessage( cmdMsg.toHtml() );
         },
         "soft-cap-mod": function( dailyExp, softCap ) {
@@ -513,6 +649,21 @@ module.exports = function ep_calculator( mod ) {
                     printHelpList( this.help.verbose );
                 }
             },
+            highest: {
+                long() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.command( ROOT_COMMAND );
+                    cmdMsg.color().text( " highest" );
+                    return cmdMsg.toHtml();
+                },
+                short() {
+                    return "Prints the highest source for EP exp that can be done without exceeding the soft cap.";
+                },
+                $default() {
+                    printHelpList( this.help.verbose );
+                }
+            },
             "catch-up-mod": {
                 long() {
                     cmdMsg.clear();
@@ -530,6 +681,29 @@ module.exports = function ep_calculator( mod ) {
                 },
                 $default() {
                     printHelpList( this.help["catch-up-mod"]);
+                }
+            },
+            "soft-cap": {
+                long() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.command( ROOT_COMMAND );
+                    cmdMsg.color().text( " soft-cap " );
+                    cmdMsg.value( "ep " );
+                    cmdMsg.color().text( "\nWhere...\n" );
+                    cmdMsg.value( "ep" );
+                    cmdMsg.color().text( " is the maximal available EP (also displayed in the talent window)." );
+                    return cmdMsg.toHtml();
+                },
+                short() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "Returns the soft cap by a given " );
+                    cmdMsg.value( "ep" );
+                    cmdMsg.color().text( "." );
+                    return cmdMsg.toHtml();
+                },
+                $default() {
+                    printHelpList( this.help["soft-cap-mod"]);
                 }
             },
             "soft-cap-mod": {
@@ -654,7 +828,7 @@ module.exports = function ep_calculator( mod ) {
         let builder = new MessageBuilder();
         let messages = [];
         messages.push( `EP STATUS:` );
-        messages.push( shortEPStatus() );
+        messages.push( epStatus() );
         builder.clear();
         builder.text( "Catch Up modifier: " );
         builder.color( utils.COLOR_VALUE ).text( epCalc.catchUpMod );

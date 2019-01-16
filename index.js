@@ -479,7 +479,7 @@ module.exports = function ep_calculator( mod ) {
             if ( configData.verbose ) {
                 let secondNextHighestEPData = EP_TABLE.get( secondNextHighest.source );
                 msg.text(
-                    `${epCalc.applyBonusModifier( secondNextHighestEPData )} ${secondNextHighestEPData.bams
+                    `${epCalc.applyBonusModifier( secondNextHighestEPData )} + ${secondNextHighestEPData.bams
                         * epCalc.applyBonusModifier( EP_TABLE.get( BAM_SOURCE ) )} `
                 );
             }

@@ -399,7 +399,7 @@ class EPCalc {
         let epObj = EP_TABLE.get( source );
         if ( !epObj ) return 0;
         let epExp = EPCalc.applyBonusModifier( ep, epObj );
-        epExp += epObj.bams * EPCalc.applyBonusModifier( ep, EP_TABLE.get( BAM_SOURCE ) );
+        // epExp += epObj.bams * EPCalc.applyBonusModifier( ep, EP_TABLE.get( BAM_SOURCE ) );
         return epExp;
     }
 }
@@ -439,6 +439,30 @@ module.exports = function ep_calculator( mod ) {
         locales[lang] = fileHelper.loadJson( fileHelper.getFullPath( `${LOCALE_PATH_PART}${lang}.json`, __dirname ) );
     }
 
+    function epStatusStep( msgBuilder, leftExp ) {
+        let nextHighest = EPCalc.calcNextHighestEPSource( epCalc.totalEP, leftExp );
+        if ( nextHighest && nextHighest.count ) {
+            msgBuilder.text( " --> " );
+            msgBuilder.coloredValue( nextHighest.count, CRUCIAL_BAM_COUNT, 1 ).color();
+            msgBuilder.text(
+                `x ${locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]} (`
+            );
+            if ( configData.verbose ) {
+                let epData = EP_TABLE.get( nextHighest.source );
+                msgBuilder.text(
+                    `${epCalc.applyBonusModifier( epData )} [+ ${epData.bams
+                        * epCalc.applyBonusModifier( EP_TABLE.get( BAM_SOURCE ) )} (BAMs)] `
+                );
+            }
+            msgBuilder.text( "+ " );
+            // FIXME totalEP might change after first vanguard has been turned in
+            leftExp -= Math.round( nextHighest.count * EPCalc.bonusExp( epCalc.totalEP, nextHighest.source ) );
+            msgBuilder.coloredValue( leftExp, epCalc.softCapStart );
+            msgBuilder.color().text( ")" );
+        }
+        return leftExp;
+    }
+
     function epStatus() {
         let msg = new MessageBuilder();
         msg.highlight( `+${epCalc.lastDiff} ` );
@@ -446,51 +470,8 @@ module.exports = function ep_calculator( mod ) {
         let leftExp = epCalc.leftDailyBonusExp( true );
         let leftExpAfter = leftExp;
         msg.coloredValue( leftExp, epCalc.softCapStart ).color();
-        let nextHighest = epCalc.nextHightestEPSource;
-        if ( nextHighest && nextHighest.count ) {
-            msg.text( " --> " );
-            msg.coloredValue( nextHighest.count, CRUCIAL_BAM_COUNT, 1 ).color();
-            msg.text(
-                `x ${locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]} (`
-            );
-            if ( configData.verbose ) {
-                let nextHighestEPData = EP_TABLE.get( nextHighest.source );
-                msg.text(
-                    `${epCalc.applyBonusModifier( nextHighestEPData )} + ${nextHighestEPData.bams
-                        * epCalc.applyBonusModifier( EP_TABLE.get( BAM_SOURCE ) )} `
-                );
-            }
-            msg.text( "+ " );
-            leftExpAfter -= Math.round( nextHighest.count * EPCalc.bonusExp( epCalc.totalEP, nextHighest.source ) );
-            msg.coloredValue( leftExpAfter, epCalc.softCapStart );
-            msg.color().text( ")" );
-        }
-        let secondNextHighest = EPCalc.calcNextHighestEPSource( epCalc.totalEP, leftExpAfter );
-        if ( secondNextHighest && secondNextHighest.count ) {
-            msg.text( " + " );
-            msg.coloredValue( secondNextHighest.count, CRUCIAL_BAM_COUNT, 1 ).color();
-            msg.text(
-                `x ${
-                    locales[language] ?
-                        locales[language][secondNextHighest.source]
-                        : DEFAULT_LOCALE[secondNextHighest.source]
-                } (`
-            );
-            if ( configData.verbose ) {
-                let secondNextHighestEPData = EP_TABLE.get( secondNextHighest.source );
-                msg.text(
-                    `${epCalc.applyBonusModifier( secondNextHighestEPData )} + ${secondNextHighestEPData.bams
-                        * epCalc.applyBonusModifier( EP_TABLE.get( BAM_SOURCE ) )} `
-                );
-            }
-            msg.text( "+ " );
-            // FIXME totalEP might change after first vanguard has been turned in
-            leftExpAfter -= Math.round(
-                secondNextHighest.count * EPCalc.bonusExp( epCalc.totalEP, secondNextHighest.source )
-            );
-            msg.coloredValue( leftExpAfter, epCalc.softCapStart );
-            msg.color().text( ")" );
-        }
+        leftExpAfter = epStatusStep( msg, leftExpAfter );
+        leftExpAfter = epStatusStep( msg, leftExpAfter );
         if ( configData.verbose ) {
             msg.text( " (" );
             msg.text( "CU mod: " );

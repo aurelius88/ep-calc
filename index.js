@@ -15,7 +15,9 @@ const SOFT_CAP_GRADIENT = ( SOFT_CAP_MOD_BEFORE - SOFT_CAP_MOD_AFTER ) / ( SOFT_
 const CATCH_UP_GRADIENT = ( CATCH_UP_MOD_BEFORE - CATCH_UP_MOD_AFTER ) / ( CATCH_UP_CHANGE_START - CATCH_UP_CHANGE_END );
 const BAM_SOURCE = "bam";
 const CRUCIAL_BAM_COUNT = 12;
+const MAX_EP_LEVEL = 443;
 
+const EP_EXP = require( "./ep-exp" ); // EP_EXP[XX] = ep exp on ep lvl XX
 const EP_TABLE = new Map([
     [
         "batuDesert",
@@ -161,7 +163,50 @@ class EPCalc {
         return this._levelUp;
     }
 
-    calcBest() {}
+    get expAtCurrentLevel() {
+        return BigInt( EP_EXP[this._level]);
+    }
+
+    // bigint
+    get exp() {
+        return this._totalExp - BigInt( EP_EXP[this._level]);
+    }
+
+    // number
+    get relativeExp() {
+        return EPCalc.relativeExp( this._level, this._totalExp );
+    }
+
+
+    get expNeeded() {
+        return EPCalc.expNeeded( this._level );
+    }
+
+    static expAtLevel( level ) {
+        return BigInt( EP_EXP[level]);
+    }
+
+    // bigint
+    static exp( level, totalExp ) {
+        if( level < 0 || level > MAX_EP_LEVEL )
+            throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL}` );
+        if( totalExp < BigInt( EP_EXP[level]) || level != MAX_EP_LEVEL && totalExp >= BigInt( EP_EXP[level+1]) )
+            throw new RangeError( `"totalExp" should be >= ${EP_EXP[level]} and < ${EP_EXP[level+1]}` );
+        return totalExp - BigInt( EP_EXP[level]);
+    }
+
+    static relativeExp( level, totalExp ) {
+        return Number( EPCalc.exp( level, totalExp ) ) / Number( EPCalc.expNeeded( level ) ) ;
+    }
+
+    static expNeeded( level ) {
+        if( level < 0 || level > MAX_EP_LEVEL )
+            throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL}` );
+        return level < EP_EXP.length - 1 ? BigInt( EP_EXP[level+1]) - BigInt( EP_EXP[level]) : BigInt( 0 );
+    }
+
+    calcBest() {
+    }
 
     /**
      * Counts how many times you can do each source before reaching the start of soft cap.
@@ -242,6 +287,7 @@ class EPCalc {
         return Math.floor( this._softCap * SOFT_CAP_CHANGE_START );
     }
 
+    // FIXME may lead to wrong values when soft cap is accumulated
     get softCap() {
         return this._softCap != undefined ? this._softCap : this.calcSoftCap();
     }
@@ -263,6 +309,7 @@ class EPCalc {
         return Math.floor( SOFT_CAP_TABLE.get( keys[foundKey]) * EPCalc.calcCatchUpMod( ep ) );
     }
 
+    // bigint
     get totalExp() {
         return this._totalExp;
     }
@@ -836,7 +883,13 @@ module.exports = function ep_calculator( mod ) {
         builder.clear();
         builder.text( "EP-LVL: " );
         builder.value( epCalc.level );
-        builder.color().text( "  EP: " );
+        builder.color().text( " (" );
+        builder.coloredValue( epCalc.exp, epCalc.expNeeded );
+        builder.color().text( "/" );
+        builder.value( epCalc.expNeeded );
+        builder.color().text( " [" );
+        builder.coloredValue( Math.round( epCalc.relativeExp*10000 ) / 100, 100 );
+        builder.color().text( "%]) EP: " );
         builder.value( epCalc.usedEP );
         builder.color().text( "/" );
         builder.color( utils.COLOR_HIGHLIGHT ).text( epCalc.totalEP );

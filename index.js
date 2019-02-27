@@ -15,88 +15,19 @@ const SOFT_CAP_GRADIENT = ( SOFT_CAP_MOD_BEFORE - SOFT_CAP_MOD_AFTER ) / ( SOFT_
 const CATCH_UP_GRADIENT = ( CATCH_UP_MOD_BEFORE - CATCH_UP_MOD_AFTER ) / ( CATCH_UP_CHANGE_START - CATCH_UP_CHANGE_END );
 const BAM_SOURCE = "bam";
 const CRUCIAL_BAM_COUNT = 12;
+const MAX_EP_LEVEL = 443;
 
-const EP_TABLE = new Map([
-    [
-        "batuDesert",
-        { exp: 2000.0, expAfterLimit: 1600.0, isQuest: true, limit: 16, asFiller: false, time: 1200, bams: 0 }
-    ],
-    [
-        "dungeon439",
-        { exp: 1518.65, expAfterLimit: 1215.0, isQuest: true, limit: 16, asFiller: true, time: 720, bams: 0 }
-    ],
-    [
-        "CorsairsFraywindSkyring",
-        { exp: 1518.65, expAfterLimit: 1215.0, isQuest: true, limit: 16, asFiller: false, time: 1200, bams: 0 }
-    ],
-    [
-        "dungeon431",
-        { exp: 1418.0, expAfterLimit: 1134.0, isQuest: true, limit: 16, asFiller: true, time: 360, bams: 3 }
-    ],
-    [
-        "dungeon412",
-        { exp: 1267.7, expAfterLimit: 1012.0, isQuest: true, limit: 16, asFiller: true, time: 180, bams: 3 }
-    ],
-    [
-        "levelUp65_2",
-        { exp: 1000.0, expAfterLimit: 1000.0, isQuest: false, limit: 1, asFiller: false, time: -1, bams: 0 }
-    ],
-    [
-        "islandOfDawn",
-        { exp: 911.6, expAfterLimit: 729.0, isQuest: true, limit: 16, asFiller: true, time: 80, bams: 10 }
-    ],
-    ["echoesOfAranea", { exp: 911.0, expAfterLimit: 0, isQuest: true, limit: 16, asFiller: true, time: 120, bams: 0 }],
-    ["kumasIronBG", { exp: 843.0, expAfterLimit: 0, isQuest: true, limit: 16, asFiller: false, time: 1200, bams: 0 }],
-    ["fishing", { exp: 646.67, expAfterLimit: 517.3, isQuest: true, limit: 1, asFiller: true, time: 120, bams: 0 }],
-    [
-        "guardianAndFlyingVanguard",
-        { exp: 500.0, expAfterLimit: 400.0, isQuest: true, limit: 16, asFiller: true, time: 240, bams: 0 }
-    ],
-    ["pitOfPetrax", { exp: 454.65, expAfterLimit: 363, isQuest: true, limit: 3, asFiller: true, time: 60, bams: 1 }],
-    [
-        "celestialArena",
-        { exp: 425.0, expAfterLimit: 340, isQuest: true, limit: 16, asFiller: true, time: 300, bams: 0 }
-    ],
-    ["aceDungeons", { exp: 303.0, expAfterLimit: 242.4, isQuest: true, limit: 16, asFiller: true, time: 150, bams: 4 }],
-    ["kill30Quest", { exp: 270.0, expAfterLimit: 216, isQuest: true, limit: 16, asFiller: true, time: 300, bams: 0 }],
-    ["gather30Quest", { exp: 180.0, expAfterLimit: 144, isQuest: true, limit: 16, asFiller: true, time: 180, bams: 0 }],
-    [BAM_SOURCE, { exp: 10.0, expAfterLimit: 10.0, isQuest: false, limit: -1, asFiller: true, time: 8, bams: 0 }],
-    ["levelUp65_1", { exp: 1.0, expAfterLimit: 1.0, isQuest: false, limit: 1, asFiller: false, time: -1, bams: 0 }]
-]);
+const EP = require( "./data/ep" ); // EP[XX] = ep on ep lvl XX
+const EP_EXP = require( "./data/ep-exp" ); // EP_EXP[XX] = ep exp on ep lvl XX
+const EP_TABLE = require( "./data/ep-sources" );
 // enchantment isn't something you can rely on. But for the sake of completeness:
 // enchant frostmetal +8 -> 45
 // enchant frostmetal +9 -> 135
 // enchant stormcry +8 -> 100
 // enchant stormcry +9 -> 300
 
-const SOFT_CAP_TABLE = new Map([
-    [1, 1002],
-    [3, 501],
-    [6, 802],
-    [12, 902],
-    [23, 952],
-    [25, 989],
-    [34, 995],
-    [45, 996],
-    [54, 998],
-    [57, 1494.3],
-    [132, 1497.3],
-    [133, 1996.6],
-    [199, 1998],
-    [200, 2497.3],
-    [264, 2497.3],
-    [265, 2997],
-    [324, 2997],
-    [325, 3496.3],
-    [358, 3496.3],
-    [385, 3496.3],
-    [386, 3995],
-    [442, 3995],
-    [443, 4494.2],
-    [498, 4494.2],
-    [499, 4994.4],
-    [500, 0]
-]);
+// maps: ep -> soft cap
+const SOFT_CAP_TABLE = require( "./data/soft-cap" );
 
 const DEFAULT_LOCALE = {
     batuDesert: "Batu Desert",
@@ -157,8 +88,62 @@ class EPCalc {
         return this._level;
     }
 
+    static level( ep ) {
+        if ( ep < 0 || ep > 500 ) throw new RangeError( `"EP" should be >= 0 and <= 500.` );
+        return binarySearch( EP, ep, ( ep1, ep2 ) => ep1 - ep2 );
+    }
+
     get levelUp() {
         return this._levelUp;
+    }
+
+    get expAtCurrentLevel() {
+        return BigInt( EP_EXP[this._level]);
+    }
+
+    // bigint
+    exp() {
+        return this._totalExp - BigInt( EP_EXP[this._level]);
+    }
+
+    // number
+    relativeExp() {
+        return EPCalc.relativeExp( this._level, this._totalExp );
+    }
+
+    expNeeded() {
+        return EPCalc.expNeeded( this._level );
+    }
+
+    static expAtLevel( level ) {
+        if ( level < 0 || level > MAX_EP_LEVEL ) throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL}` );
+        return BigInt( EP_EXP[level]);
+    }
+
+    // bigint
+    static exp( level, totalExp ) {
+        if ( level < 0 || level > MAX_EP_LEVEL ) throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL}` );
+        if ( totalExp < BigInt( EP_EXP[level]) || ( level != MAX_EP_LEVEL && totalExp >= BigInt( EP_EXP[level + 1]) ) )
+            throw new RangeError( `"totalExp" should be >= ${EP_EXP[level]} and < ${EP_EXP[level + 1]}` );
+        return totalExp - BigInt( EP_EXP[level]);
+    }
+
+    // bigint
+    static expEP( ep, percent ) {
+        let level = binarySearch( EP, ep, ( ep1, ep2 ) => ep1 - ep2 );
+        if ( level < 0 ) throw new Error( `Illegal EP value: ${ep}` );
+        if ( percent < 0 || percent >= 100 ) throw new RangeError( `"percent" should be >= 0 and < 100.` );
+        let currentLevelExp = Math.round( ( percent / 100 ) * Number( EPCalc.expNeeded( level ) ) );
+        return EPCalc.expAtLevel( level ) + BigInt( currentLevelExp );
+    }
+
+    static relativeExp( level, totalExp ) {
+        return Number( EPCalc.exp( level, totalExp ) ) / Number( EPCalc.expNeeded( level ) );
+    }
+
+    static expNeeded( level ) {
+        if ( level < 0 || level > MAX_EP_LEVEL ) throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL}` );
+        return level < EP_EXP.length - 1 ? BigInt( EP_EXP[level + 1]) - BigInt( EP_EXP[level]) : BigInt( 0 );
     }
 
     calcBest() {}
@@ -185,8 +170,12 @@ class EPCalc {
         return result;
     }
 
-    static calcLeftExp( ep, expPercentStart, expPercentEnd ) {
-        return 0; // FIXME dummy
+    // bigint
+    static calcLeftExp( epStart, expPercentStart = 0, epEnd = epStart, expPercentEnd = expPercentStart ) {
+        let startExp = EPCalc.expEP( epStart, expPercentStart );
+        let endExp = EPCalc.expEP( epEnd, expPercentEnd );
+        let softCap = Math.floor( EPCalc.calcSoftCapStart( epEnd ) );
+        return BigInt( softCap ) - ( endExp - startExp );
     }
 
     /**
@@ -235,13 +224,14 @@ class EPCalc {
 
     /**
      * The start value of the soft cap. At how much ep exp the soft cap
-     * modifier will deacrease.
+     * modifier will decrease.
      * @return {number} the start value of the soft cap.
      */
     get softCapStart() {
         return Math.floor( this._softCap * SOFT_CAP_CHANGE_START );
     }
 
+    // FIXME may lead to wrong values when soft cap is accumulated
     get softCap() {
         return this._softCap != undefined ? this._softCap : this.calcSoftCap();
     }
@@ -263,6 +253,11 @@ class EPCalc {
         return Math.floor( SOFT_CAP_TABLE.get( keys[foundKey]) * EPCalc.calcCatchUpMod( ep ) );
     }
 
+    static calcSoftCapStart( ep ) {
+        return EPCalc.calcSoftCap( ep ) * SOFT_CAP_CHANGE_START;
+    }
+
+    // bigint
     get totalExp() {
         return this._totalExp;
     }
@@ -359,6 +354,10 @@ class EPCalc {
         return ( softCapRatio - SOFT_CAP_CHANGE_START ) * SOFT_CAP_GRADIENT + SOFT_CAP_MOD_BEFORE;
     }
 
+    static calcSoftCapModByEP( dailyExp, ep ) {
+        return EPCalc.calcSoftCapMod( dailyExp, SOFT_CAP_TABLE[ep]);
+    }
+
     /**
      * Returns the last soft cap modifier.
      * @return {number} the last soft cap.
@@ -399,7 +398,7 @@ class EPCalc {
         let epObj = EP_TABLE.get( source );
         if ( !epObj ) return 0;
         let epExp = EPCalc.applyBonusModifier( ep, epObj );
-        epExp += epObj.bams * EPCalc.applyBonusModifier( ep, EP_TABLE.get( BAM_SOURCE ) );
+        // epExp += epObj.bams * EPCalc.applyBonusModifier( ep, EP_TABLE.get( BAM_SOURCE ) );
         return epExp;
     }
 }
@@ -439,6 +438,30 @@ module.exports = function ep_calculator( mod ) {
         locales[lang] = fileHelper.loadJson( fileHelper.getFullPath( `${LOCALE_PATH_PART}${lang}.json`, __dirname ) );
     }
 
+    function epStatusStep( msgBuilder, leftExp ) {
+        let nextHighest = EPCalc.calcNextHighestEPSource( epCalc.totalEP, leftExp );
+        if ( nextHighest && nextHighest.count ) {
+            msgBuilder.text( " --> " );
+            msgBuilder.coloredValue( nextHighest.count, CRUCIAL_BAM_COUNT, 1 ).color();
+            msgBuilder.text(
+                `x ${locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]} (`
+            );
+            if ( configData.verbose ) {
+                let epData = EP_TABLE.get( nextHighest.source );
+                msgBuilder.text(
+                    `${epCalc.applyBonusModifier( epData )} [+ ${epData.bams
+                        * epCalc.applyBonusModifier( EP_TABLE.get( BAM_SOURCE ) )} (BAMs)] `
+                );
+            }
+            msgBuilder.text( "+ " );
+            // FIXME totalEP might change after first vanguard has been turned in
+            leftExp -= Math.round( nextHighest.count * EPCalc.bonusExp( epCalc.totalEP, nextHighest.source ) );
+            msgBuilder.coloredValue( leftExp, epCalc.softCapStart );
+            msgBuilder.color().text( ")" );
+        }
+        return leftExp;
+    }
+
     function epStatus() {
         let msg = new MessageBuilder();
         msg.highlight( `+${epCalc.lastDiff} ` );
@@ -446,51 +469,8 @@ module.exports = function ep_calculator( mod ) {
         let leftExp = epCalc.leftDailyBonusExp( true );
         let leftExpAfter = leftExp;
         msg.coloredValue( leftExp, epCalc.softCapStart ).color();
-        let nextHighest = epCalc.nextHightestEPSource;
-        if ( nextHighest && nextHighest.count ) {
-            msg.text( " --> " );
-            msg.coloredValue( nextHighest.count, CRUCIAL_BAM_COUNT, 1 ).color();
-            msg.text(
-                `x ${locales[language] ? locales[language][nextHighest.source] : DEFAULT_LOCALE[nextHighest.source]} (`
-            );
-            if ( configData.verbose ) {
-                let nextHighestEPData = EP_TABLE.get( nextHighest.source );
-                msg.text(
-                    `${epCalc.applyBonusModifier( nextHighestEPData )} + ${nextHighestEPData.bams
-                        * epCalc.applyBonusModifier( EP_TABLE.get( BAM_SOURCE ) )} `
-                );
-            }
-            msg.text( "+ " );
-            leftExpAfter -= Math.round( nextHighest.count * EPCalc.bonusExp( epCalc.totalEP, nextHighest.source ) );
-            msg.coloredValue( leftExpAfter, epCalc.softCapStart );
-            msg.color().text( ")" );
-        }
-        let secondNextHighest = EPCalc.calcNextHighestEPSource( epCalc.totalEP, leftExpAfter );
-        if ( secondNextHighest && secondNextHighest.count ) {
-            msg.text( " + " );
-            msg.coloredValue( secondNextHighest.count, CRUCIAL_BAM_COUNT, 1 ).color();
-            msg.text(
-                `x ${
-                    locales[language] ?
-                        locales[language][secondNextHighest.source]
-                        : DEFAULT_LOCALE[secondNextHighest.source]
-                } (`
-            );
-            if ( configData.verbose ) {
-                let secondNextHighestEPData = EP_TABLE.get( secondNextHighest.source );
-                msg.text(
-                    `${epCalc.applyBonusModifier( secondNextHighestEPData )} ${secondNextHighestEPData.bams
-                        * epCalc.applyBonusModifier( EP_TABLE.get( BAM_SOURCE ) )} `
-                );
-            }
-            msg.text( "+ " );
-            // FIXME totalEP might change after first vanguard has been turned in
-            leftExpAfter -= Math.round(
-                secondNextHighest.count * EPCalc.bonusExp( epCalc.totalEP, secondNextHighest.source )
-            );
-            msg.coloredValue( leftExpAfter, epCalc.softCapStart );
-            msg.color().text( ")" );
-        }
+        leftExpAfter = epStatusStep( msg, leftExpAfter );
+        leftExpAfter = epStatusStep( msg, leftExpAfter );
         if ( configData.verbose ) {
             msg.text( " (" );
             msg.text( "CU mod: " );
@@ -512,8 +492,13 @@ module.exports = function ep_calculator( mod ) {
     let cmdMsg = new MessageBuilder();
 
     let commands = {
-        $default() {
-            printHelpList( this.help );
+        $default( value ) {
+            if ( value == undefined || value == "" ) printHelpList( this.help );
+            else {
+                cmdMsg.clear();
+                cmdMsg.text( 'Unknown command. Type "epc help" for help.' );
+                utils.printMessage( cmdMsg.toHtml() );
+            }
         },
         config: function() {
             if ( ui ) {
@@ -549,19 +534,73 @@ module.exports = function ep_calculator( mod ) {
         "catch-up-mod": function( ep ) {
             if ( !ep ) return printHelpList( this.help["catch-up-mod"]);
             cmdMsg.clear();
-            cmdMsg.value( EPCalc.calcCatchUpMod( parseInt( ep ) ) );
+            try {
+                cmdMsg.value( EPCalc.calcCatchUpMod( parseInt( ep, 10 ) ) );
+            } catch ( e ) {
+                cmdMsg.text( e );
+            }
             utils.printMessage( cmdMsg.toHtml() );
         },
         "soft-cap": function( ep ) {
             if ( !ep ) return printHelpList( this.help["soft-cap"]);
             cmdMsg.clear();
-            cmdMsg.value( EPCalc.calcSoftCap( parseInt( ep ) ) );
+            try {
+                let epVal = parseInt( ep, 10 );
+                cmdMsg.value( EPCalc.calcSoftCapStart( epVal ) );
+                cmdMsg.color().text( " [" );
+                cmdMsg.value( EPCalc.calcSoftCap( epVal ) );
+                cmdMsg.color().text( "]" );
+            } catch ( e ) {
+                cmdMsg.text( e );
+            }
             utils.printMessage( cmdMsg.toHtml() );
         },
-        "soft-cap-mod": function( dailyExp, softCap ) {
-            if ( !softCap || !dailyExp ) return printHelpList( this.help["soft-cap-mod"]);
+        exp: function( ep, percent = 0 ) {
+            if ( !ep ) return printHelpList( this.help["exp"]);
             cmdMsg.clear();
-            cmdMsg.value( EPCalc.calcSoftCapMod( parseInt( dailyExp ), parseInt( softCap ) ) );
+            try {
+                cmdMsg.value( EPCalc.expEP( parseInt( ep, 10 ), percent ) );
+            } catch ( e ) {
+                cmdMsg.text( e );
+            }
+            utils.printMessage( cmdMsg.toHtml() );
+        },
+        "left-exp": function(
+            epStart,
+            percentStart = 0,
+            epEnd = epStart,
+            percentEnd = epEnd == epStart ? percentStart : 0
+        ) {
+            if ( !epStart ) return printHelpList( this.help["left-exp"]);
+            cmdMsg.clear();
+            try {
+                cmdMsg.value(
+                    EPCalc.calcLeftExp(
+                        parseInt( epStart, 10 ),
+                        parseFloat( percentStart ),
+                        parseInt( epEnd, 10 ),
+                        parseFloat( percentEnd )
+                    )
+                );
+            } catch ( e ) {
+                cmdMsg.text( e );
+            }
+            utils.printMessage( cmdMsg.toHtml() );
+        },
+        level: function( ep ) {
+            if ( !ep ) return printHelpList( this.help["level"]);
+            cmdMsg.clear();
+            try {
+                cmdMsg.value( EPCalc.level( parseInt( ep, 10 ) ) );
+            } catch ( e ) {
+                cmdMsg.text( e );
+            }
+            utils.printMessage( cmdMsg.toHtml() );
+        },
+        "soft-cap-mod": function( dailyExp, ep ) {
+            if ( !ep || !dailyExp ) return printHelpList( this.help["soft-cap-mod"]);
+            cmdMsg.clear();
+            cmdMsg.value( EPCalc.calcSoftCapMod( parseInt( dailyExp, 10 ), parseInt( ep, 10 ) ) );
             utils.printMessage( cmdMsg.toHtml() );
         },
         lang: function( lang ) {
@@ -733,6 +772,101 @@ module.exports = function ep_calculator( mod ) {
                     printHelpList( this.help["soft-cap-mod"]);
                 }
             },
+            exp: {
+                long() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.command( ROOT_COMMAND );
+                    cmdMsg.color().text( " exp " );
+                    cmdMsg.value( "ep " ).text( "percent" );
+                    cmdMsg.color().text( "\nWhere...\n" );
+                    cmdMsg.value( "ep" );
+                    cmdMsg.color().text( " is the maximal available EP (also displayed in the talent window) and\n" );
+                    cmdMsg.value( "percent" );
+                    cmdMsg
+                        .color()
+                        .text( ' is the percentage of the ep level. (as displayed in talent window, e.g. "67.3")' );
+                    return cmdMsg.toHtml();
+                },
+                short() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "Prints the total ep exp at a given " );
+                    cmdMsg.value( "EP" );
+                    cmdMsg.color().text( " and " );
+                    cmdMsg.value( "percent" );
+                    cmdMsg.color().text( " value." );
+                    return cmdMsg.toHtml();
+                },
+                $default() {
+                    printHelpList( this.help["exp"]);
+                }
+            },
+            "left-exp": {
+                long() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.command( ROOT_COMMAND );
+                    cmdMsg.color().text( " left-exp " );
+                    cmdMsg
+                        .value( "ep-start " )
+                        .text( "percent-start " )
+                        .text( "ep-end " )
+                        .text( "percent-end" );
+                    cmdMsg.color().text( "\nWhere...\n" );
+                    cmdMsg.value( "ep-start" );
+                    cmdMsg.color().text( " is the EP that has been started with.\n" );
+                    cmdMsg.value( "percent-start" );
+                    cmdMsg
+                        .color()
+                        .text( " is the percentage of the ep level of the current day (before having earned ep exp).\n" );
+                    cmdMsg.value( "ep-end" );
+                    cmdMsg.color().text( " is the EP that has been ended with and\n" );
+                    cmdMsg.value( "percent-end" );
+                    cmdMsg
+                        .color()
+                        .text( " is the percentage of the ep level at the end (the current ep lvl percentage)." );
+                    return cmdMsg.toHtml();
+                },
+                short() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "Prints the left ep exp before exceeding the soft cap at a given " );
+                    cmdMsg.value( "ep-start" );
+                    cmdMsg.color().text( ", " );
+                    cmdMsg.value( "percent-start" );
+                    cmdMsg.color().text( ", " );
+                    cmdMsg.value( "ep-end" );
+                    cmdMsg.color().text( " and " );
+                    cmdMsg.value( "percent-end" );
+                    cmdMsg.color().text( " value." );
+                    return cmdMsg.toHtml();
+                },
+                $default() {
+                    printHelpList( this.help["left-exp"]);
+                }
+            },
+            level: {
+                long() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "USAGE: " );
+                    cmdMsg.command( ROOT_COMMAND );
+                    cmdMsg.color().text( " level " );
+                    cmdMsg.value( "ep " );
+                    cmdMsg.color().text( "\nWhere...\n" );
+                    cmdMsg.value( "ep" );
+                    cmdMsg.color().text( " is the maximal available EP (also displayed in the talent window)." );
+                    return cmdMsg.toHtml();
+                },
+                short() {
+                    cmdMsg.clear();
+                    cmdMsg.text( "Returns the level by a given " );
+                    cmdMsg.value( "ep" );
+                    cmdMsg.color().text( "." );
+                    return cmdMsg.toHtml();
+                },
+                $default() {
+                    printHelpList( this.help["level"]);
+                }
+            },
             count: {
                 long() {
                     cmdMsg.clear();
@@ -855,7 +989,13 @@ module.exports = function ep_calculator( mod ) {
         builder.clear();
         builder.text( "EP-LVL: " );
         builder.value( epCalc.level );
-        builder.color().text( "  EP: " );
+        builder.color().text( " (" );
+        builder.coloredValue( epCalc.exp(), epCalc.expNeeded() );
+        builder.color().text( "/" );
+        builder.value( epCalc.expNeeded() );
+        builder.color().text( " [" );
+        builder.coloredValue( Math.round( epCalc.relativeExp() * 10000 ) / 100, 100 );
+        builder.color().text( "%]) EP: " );
         builder.value( epCalc.usedEP );
         builder.color().text( "/" );
         builder.color( utils.COLOR_HIGHLIGHT ).text( epCalc.totalEP );

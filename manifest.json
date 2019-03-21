@@ -1,17 +1,27 @@
 {
     "files": {
-        "index.js": "e5eaa2178b4b0bb222c43f61cf6a44603eaa3d5d463799499999f067785df1f7",
-        "module.json": "96ffdb989980a6a09b06732b87b1d2984432f8d029da105a1d72df16965777b6",
+        "index.js": "6e5bf8cfaf9a469d6686813f946489e2da1bd859fb93f95d8eda1111be820799",
+        "module.json": "6c839e681e11aade0c5c17258aa9d90f1a7ae8a5766f9b9a7a9179043d067ffd",
         "README.md": "32d30b2bfac47cba34b0137da2302bb254186ddcb25640e0e63058d8863102cc",
         "settings_migrator.js": "c7fe7dbec947ba6098c45b3683a4468f94bbb58852986000402d63de9a8e8ecc",
         "settings_structure.js": "3f1aaa8b3a2a7e265dfc4e5e113bf6cbfaf722b1aae3a97e73527861f6e4fd7b",
+        "data/ep-buffs.js": "ee103e3e438c9f09a15260a28524d36c169f2175f69a9aceb9b9bf07de3d997f",
         "data/ep-exp.js": "5fb27659754b605a9833bebf9a12b5855aa50d53dc9fff596432dc858d04f23d",
-        "data/ep-sources.js": "681d152cc79605790ee1cadef4c01cb95b65679221f8099bdc3d7535dc887191",
+        "data/ep-sources.js": "d702aa6f38ca2c0155b8c0a243f2bb7e0cc51ae76644b1539213dc8957895e0b",
         "data/ep.js": "b49b047592d3b668f2a50ef33bb1d5c04c53d28758cf24e34659f63fb1c68d35",
         "data/soft-cap.js": "9fadb92a1f1df03417efb2e7db7c235899ee7e5fafaa9a8997505d3747245a84",
         "locale/locale-de.json": "5aba4212741744422d70ba0df79b67eb047b013945e3fb58974dd39532070e21",
         "locale/locale-en.json": "d00d0bf88706389839b8e13129074c712099bfba09832efc380a86da8513570b",
         "locale/locale-fr.json": "9eb9d665ff69381501bcb84f9aba62f1b0a6bac12641812cdc0c959cc11f31ec"
     },
-    "defs": {}
+    "defs": {
+        "S_LOAD_EP_INFO" : 1,
+        "S_PLAYER_CHANGE_EP" : 1,
+        "S_CHANGE_EP_EXP_DAILY_LIMIT" : 1,
+        "S_ABNORMALITY_BEGIN": 3,
+        "S_ABNORMALITY_REFRESH": 1,
+        "S_ABNORMALITY_END": 1,
+        "S_ABNORMALITY_FAIL": 1,
+        "S_RETURN_TO_LOBBY": 1
+    }
 }

@@ -1,4 +1,5 @@
 const binarySearch = require( "binary-search" );
+const util = require( "util" );
 
 const SOFT_CAP_CHANGE_START = 0.88947365;
 const SOFT_CAP_CHANGE_END = SOFT_CAP_CHANGE_START + 0.2;
@@ -20,21 +21,17 @@ const MAX_EP_LEVEL = 443;
 const EP = require( "./data/ep" ); // EP[XX] = ep on ep lvl XX
 const EP_EXP = require( "./data/ep-exp" ); // EP_EXP[XX] = ep exp on ep lvl XX
 const EP_TABLE = require( "./data/ep-sources" );
-// enchantment isn't something you can rely on. But for the sake of completeness:
-// enchant frostmetal +8 -> 45
-// enchant frostmetal +9 -> 135
-// enchant stormcry +8 -> 100
-// enchant stormcry +9 -> 300
-
 // maps: ep -> soft cap
 const SOFT_CAP_TABLE = require( "./data/soft-cap" );
+const EP_BUFFS = require( "./data/ep-buffs" );
 
 const DEFAULT_LOCALE = {
     batuDesert: "Batu Desert",
-    dungeon439: "493+ dungeon",
+    dungeon439: "439+ dungeon",
     CorsairsFraywindSkyring: "Corsairs / Fraywind / Skyring",
     dungeon431: "431 dungeon",
     dungeon412: "412 dungeon",
+    wintera: "Wintera",
     levelUp65_2: "Level up -> 65 (2nd char)",
     islandOfDawn: "Island of Dawn Low/Mid/High",
     echoesOfAranea: "Echoes of Aranea",
@@ -44,8 +41,9 @@ const DEFAULT_LOCALE = {
     pitOfPetrax: "Pit of Petrax",
     celestialArena: "Celestial Arena",
     aceDungeons: "Ace dungeons",
-    kill30Quest: "Kill 30 __ quest",
+    kill30Quest: "Kill 30/50 __ quest",
     gather30Quest: "Gather 30 __ quest",
+    carrot: "Collect 30 Taproots",
     bam: "BAM",
     levelUp65_1: "Level up -> 65 (1st char)"
 };
@@ -57,6 +55,7 @@ class EPCalc {
         this.mod = mod;
         this._lastDiff = 0;
         this._levelUp = false;
+        this._buff = null;
 
         mod.hook( "S_LOAD_EP_INFO", 1, e => {
             this._level = e.level;
@@ -82,6 +81,31 @@ class EPCalc {
         mod.hook( "S_CHANGE_EP_EXP_DAILY_LIMIT", 1, e => {
             this._softCap = e.limit;
         });
+
+        mod.hook( "S_ABNORMALITY_BEGIN", 3, this.updateBuffMod.bind( this, "S_ABNORMALITY_BEGIN" ) );
+        mod.hook( "S_ABNORMALITY_REFRESH", 1, this.updateBuffMod.bind( this, "S_ABNORMALITY_REFRESH" ) );
+        mod.hook( "S_ABNORMALITY_END", 1, this.resetBuffMod.bind( this ) );
+        mod.hook( "S_ABNORMALITY_FAIL", 1, this.logBuff.bind( this, "S_ABNORMALITY_FAIL" ) );
+        mod.hook( "S_RETURN_TO_LOBBY", 1, this.resetBuffMod.bind( this ) );
+    }
+
+    resetBuffMod( event ) {
+        if ( !event.id || ( this._buff && this._buff.id == event.id ) ) this._buff = null;
+    }
+
+    logBuff( type, event ) {
+        if ( !this.mod.game.me.is( event.target ) ) return;
+        let buff = EP_BUFFS[event.id];
+        this.mod.log( `${type}: ${util.format( event.id )} -> ${util.format( buff )}` );
+    }
+
+    updateBuffMod( type, event ) {
+        if ( !this.mod.game.me.is( event.target ) ) return;
+        let buff = EP_BUFFS[event.id];
+        this.mod.log( `${type}: ${util.format( event.id )} -> ${util.format( buff )}` );
+        if ( buff != undefined ) {
+            this._buff = buff;
+        }
     }
 
     get level() {
@@ -153,25 +177,33 @@ class EPCalc {
      * @return {object} an object with all sources + counts. \{source:count\}
      */
     countAllEPSources() {
-        return EPCalc.countAllEPSources( this._totalEP, this.leftDailyBonusExp( true ) );
+        return EPCalc.countAllEPSources(
+            this._totalEP,
+            this.leftDailyBonusExp( true ),
+            this.buffMod,
+            this.catchUpMod,
+            this.softCapMod
+        );
     }
 
     /**
      * Counts how many times a char can do each source before reaching the start of soft cap.
      * @param  {number} ep         the current EP.
-     * @param  {number} expPercent the current exp in percent.
+     * @param  {number} leftExp    the ep exp that is left before reaching the soft cap.
+     * @param  {number} catchUpMod the modifier of the ep catch-up-system.
+     * @param  {number} buffMod    the modifier of the ep buffs.
      * @return {object}            an object with all sources + counts. \{source:count\}
      */
-    static countAllEPSources( ep, leftExp ) {
+    static countAllEPSources( ep, leftExp, buffMod = 1, catchUpMod, softCapMod ) {
         let result = {};
         for ( let key of EP_TABLE.keys() ) {
-            result[key] = EPCalc.countEPSource( ep, leftExp, key );
+            result[key] = EPCalc.countEPSource( ep, leftExp, key, buffMod, catchUpMod, softCapMod );
         }
         return result;
     }
 
     // bigint
-    static calcLeftExp( epStart, expPercentStart = 0, epEnd = epStart, expPercentEnd = expPercentStart ) {
+    static calcLeftDailyExp( epStart, expPercentStart = 0, epEnd = epStart, expPercentEnd = expPercentStart ) {
         let startExp = EPCalc.expEP( epStart, expPercentStart );
         let endExp = EPCalc.expEP( epEnd, expPercentEnd );
         let softCap = Math.floor( EPCalc.calcSoftCapStart( epEnd ) );
@@ -184,7 +216,14 @@ class EPCalc {
      * @return {number}            the number of sources you can do.
      */
     countEPSource( epTableKey ) {
-        return EPCalc.countEPSource( this._totalEP, this.leftDailyBonusExp( true ), epTableKey );
+        return EPCalc.countEPSource(
+            this._totalEP,
+            this.leftDailyBonusExp( true ),
+            epTableKey,
+            this.buffMod,
+            this._catchUpMod,
+            this._softCapMod
+        );
     }
 
     /**
@@ -195,17 +234,27 @@ class EPCalc {
      * @param  {string} epTableKey the source as string key.
      * @return {number}            the number of sources a char can do.
      */
-    static countEPSource( ep, leftExp, epTableKey ) {
-        let epExp = EPCalc.bonusExp( ep, epTableKey );
+    static countEPSource( ep, leftExp, epTableKey, buffMod = 1, catchUpMod, softCapMod ) {
+        if ( softCapMod == undefined ) {
+            let softCap = EPCalc.calcSoftCap( ep );
+            softCapMod = EPCalc.calcSoftCapMod( softCap - leftExp, softCap );
+        }
+        let epExp = EPCalc.bonusExp( ep, epTableKey, buffMod, catchUpMod, softCapMod );
         return epExp > 0 ? Math.max( Math.floor( leftExp / epExp ), 0 ) : 0;
     }
 
     get nextHightestEPSource() {
-        return EPCalc.calcNextHighestEPSource( this._totalEP, this.leftDailyBonusExp( true ) );
+        return EPCalc.calcNextHighestEPSource(
+            this._totalEP,
+            this.leftDailyBonusExp( true ),
+            this.buffMod,
+            this.catchUpMod,
+            this.softCapMod
+        );
     }
 
-    static calcNextHighestEPSource( ep, leftExp ) {
-        let sourceCounts = EPCalc.countAllEPSources( ep, leftExp );
+    static calcNextHighestEPSource( ep, leftExp, buffMod = 1, catchUpMod, softCapMod ) {
+        let sourceCounts = EPCalc.countAllEPSources( ep, leftExp, buffMod, catchUpMod, softCapMod );
         let highestSource = null;
         for ( let source in sourceCounts ) {
             if ( sourceCounts[source] < 1 || !EP_TABLE.get( source ).asFiller ) continue;
@@ -228,12 +277,16 @@ class EPCalc {
      * @return {number} the start value of the soft cap.
      */
     get softCapStart() {
-        return Math.floor( this._softCap * SOFT_CAP_CHANGE_START );
+        return Math.floor( this.softCap * SOFT_CAP_CHANGE_START );
     }
 
     // FIXME may lead to wrong values when soft cap is accumulated
     get softCap() {
         return this._softCap != undefined ? this._softCap : this.calcSoftCap();
+    }
+
+    get lastSoftCap() {
+        return this._softCap;
     }
 
     calcSoftCap() {
@@ -286,12 +339,24 @@ class EPCalc {
         return this._totalEP - this._usedEP;
     }
 
+    isCatchUpModCalculated() {
+        return this._catchUpMod == undefined;
+    }
+
+    isSoftCapModCalculated() {
+        return this._softCapMod == undefined;
+    }
+
+    isSoftCapCalculated() {
+        return this._softCap == undefined;
+    }
+
     /**
      * Returns the (calculated) current catch up modifier.
      * @return {numbner} the current catch up modifier.
      */
     get catchUpMod() {
-        return this.calcCatchUpMod();
+        return this._catchUpMod != undefined ? this._catchUpMod : this.calcCatchUpMod();
     }
 
     /**
@@ -327,7 +392,7 @@ class EPCalc {
      * @return {number} the current soft cap.
      */
     get softCapMod() {
-        return this.calcSoftCapMod();
+        return this._softCapMod != undefined ? this._softCapMod : this.calcSoftCapMod();
     }
 
     /**
@@ -366,6 +431,14 @@ class EPCalc {
         return this._softCapMod;
     }
 
+    get buff() {
+        return this._buff;
+    }
+
+    get buffMod() {
+        return this._buff ? this._buff.effectValue : 1;
+    }
+
     get lastDiff() {
         return this._lastDiff;
     }
@@ -377,7 +450,7 @@ class EPCalc {
      * @return {number}              the left experience.
      */
     leftDailyBonusExp( soft = false ) {
-        let diff = ( soft ? this.softCapStart : this._softCap ) - this._dailyExp;
+        let diff = ( soft ? this.softCapStart : this.softCap ) - this._dailyExp;
         return diff;
     }
 
@@ -386,18 +459,19 @@ class EPCalc {
     }
 
     applyBonusModifier( epObj ) {
-        return EPCalc.applyBonusModifier( this._totalEP, epObj, this._catchUpMod );
+        return EPCalc.applyBonusModifier( this._totalEP, epObj, this.buffMod, this.catchUpMod, this.softCapMod );
     }
 
-    static applyBonusModifier( ep, epObj, catchUpMod ) {
+    static applyBonusModifier( ep, epObj, buffMod = 1, catchUpMod, softCapMod ) {
         if ( catchUpMod == undefined ) catchUpMod = EPCalc.calcCatchUpMod( ep );
-        return Math.floor( catchUpMod * ( epObj.isQuest ? VANGUARD_BONUS_MOD : 1 ) * epObj.exp );
+        let exp = Math.ceil( ( epObj.isQuest ? VANGUARD_BONUS_MOD : 1 ) * epObj.exp );
+        return Math.floor( catchUpMod * softCapMod * exp ) * buffMod;
     }
 
-    static bonusExp( ep, source ) {
+    static bonusExp( ep, source, buffMod = 1, catchUpMod, softCapMod ) {
         let epObj = EP_TABLE.get( source );
         if ( !epObj ) return 0;
-        let epExp = EPCalc.applyBonusModifier( ep, epObj );
+        let epExp = EPCalc.applyBonusModifier( ep, epObj, buffMod, catchUpMod, softCapMod );
         // epExp += epObj.bams * EPCalc.applyBonusModifier( ep, EP_TABLE.get( BAM_SOURCE ) );
         return epExp;
     }
@@ -439,7 +513,13 @@ module.exports = function ep_calculator( mod ) {
     }
 
     function epStatusStep( msgBuilder, leftExp ) {
-        let nextHighest = EPCalc.calcNextHighestEPSource( epCalc.totalEP, leftExp );
+        let nextHighest = EPCalc.calcNextHighestEPSource(
+            epCalc.totalEP,
+            leftExp,
+            epCalc.buffMod,
+            epCalc.catchUpMod,
+            epCalc.softCapMod
+        );
         if ( nextHighest && nextHighest.count ) {
             msgBuilder.text( " --> " );
             msgBuilder.coloredValue( nextHighest.count, CRUCIAL_BAM_COUNT, 1 ).color();
@@ -455,7 +535,16 @@ module.exports = function ep_calculator( mod ) {
             }
             msgBuilder.text( "+ " );
             // FIXME totalEP might change after first vanguard has been turned in
-            leftExp -= Math.round( nextHighest.count * EPCalc.bonusExp( epCalc.totalEP, nextHighest.source ) );
+            leftExp -= Math.round(
+                nextHighest.count
+                    * EPCalc.bonusExp(
+                        epCalc.totalEP,
+                        nextHighest.source,
+                        epCalc.buffMod,
+                        epCalc.catchUpMod,
+                        epCalc.softCapMod
+                    )
+            );
             msgBuilder.coloredValue( leftExp, epCalc.softCapStart );
             msgBuilder.color().text( ")" );
         }
@@ -546,7 +635,7 @@ module.exports = function ep_calculator( mod ) {
             cmdMsg.clear();
             try {
                 let epVal = parseInt( ep, 10 );
-                cmdMsg.value( EPCalc.calcSoftCapStart( epVal ) );
+                cmdMsg.value( Math.floor( EPCalc.calcSoftCapStart( epVal ) ) );
                 cmdMsg.color().text( " [" );
                 cmdMsg.value( EPCalc.calcSoftCap( epVal ) );
                 cmdMsg.color().text( "]" );
@@ -561,7 +650,7 @@ module.exports = function ep_calculator( mod ) {
             try {
                 cmdMsg.value( EPCalc.expEP( parseInt( ep, 10 ), percent ) );
             } catch ( e ) {
-                cmdMsg.text( e );
+                cmdMsg.text( e.message );
             }
             utils.printMessage( cmdMsg.toHtml() );
         },
@@ -575,7 +664,7 @@ module.exports = function ep_calculator( mod ) {
             cmdMsg.clear();
             try {
                 cmdMsg.value(
-                    EPCalc.calcLeftExp(
+                    EPCalc.calcLeftDailyExp(
                         parseInt( epStart, 10 ),
                         parseFloat( percentStart ),
                         parseInt( epEnd, 10 ),
@@ -964,27 +1053,46 @@ module.exports = function ep_calculator( mod ) {
         messages.push( `EP STATUS:` );
         messages.push( epStatus() );
         builder.clear();
-        builder.text( "Catch Up modifier: " );
-        builder.color( utils.COLOR_VALUE ).text( epCalc.catchUpMod );
-        builder.color().text( ", Soft Cap modifier: " );
-        builder.color( utils.COLOR_VALUE ).text( epCalc.softCapMod );
+        builder.text( "Catch-Up-Mod: " );
+        if ( epCalc.lastCatchUpMod ) {
+            builder.value( round( epCalc.lastCatchUpMod, 5 ) );
+            builder.color().text( " (last, exactly) -> " );
+        }
+        builder.value( epCalc.calcCatchUpMod() );
+        builder.color().text( " (current, approximately)" );
         messages.push( builder.toHtml() );
         builder.clear();
-        builder.color( utils.COLOR_VALUE ).text( epCalc.startExp );
-        builder.color().text( " --" );
+        builder.color().text( "Soft-Cap-Mod: " );
+        if ( round( epCalc.lastSoftCapMod, 5 ) ) {
+            builder.value( epCalc.lastSoftCapMod );
+            builder.color().text( " (last, exactly) -> " );
+        }
+        builder.value( epCalc.calcSoftCapMod() );
+        builder.color().text( " (current, approximately)" );
+        messages.push( builder.toHtml() );
+        builder.clear();
+        builder.text( "EP-Boost-Mod: " );
+        builder.value( epCalc.buffMod );
+        if ( epCalc.buff ) builder.color().text( `(${epCalc.buff.name})` );
+        messages.push( builder.toHtml() );
+        builder.clear();
+        builder.color().text( "Total EP-XP: " );
+        builder.value( epCalc.startExp );
+        builder.color().text( " (start) --" );
         builder.coloredValue( epCalc.dailyExp, 0, epCalc.softCapStart );
         builder.color().text( "--> " );
-        builder.color( utils.COLOR_VALUE ).text( epCalc.totalExp );
+        builder.value( epCalc.totalExp );
+        builder.color().text( " (end)" );
         messages.push( builder.toHtml() );
         builder.clear();
         builder.coloredValue( epCalc.leftDailyBonusExp( true ), epCalc.softCapStart );
         builder.color().text( "/" );
         builder.value( epCalc.softCapStart );
-        builder.color().text( " [" );
+        builder.color().text( `${epCalc.isSoftCapCalculated() ? "*" : ""} [` );
         builder.value( epCalc.leftDailyBonusExp( false ) );
         builder.color().text( "/" );
         builder.value( epCalc.softCap );
-        builder.color().text( "]" );
+        builder.color().text( `${epCalc.isSoftCapCalculated() ? "*" : ""}]` );
         messages.push( builder.toHtml() );
         builder.clear();
         builder.text( "EP-LVL: " );
@@ -993,12 +1101,18 @@ module.exports = function ep_calculator( mod ) {
         builder.coloredValue( epCalc.exp(), epCalc.expNeeded() );
         builder.color().text( "/" );
         builder.value( epCalc.expNeeded() );
-        builder.color().text( " [" );
+        builder.color().text( " - " );
         builder.coloredValue( Math.round( epCalc.relativeExp() * 10000 ) / 100, 100 );
-        builder.color().text( "%]) EP: " );
+        builder.color().text( "%) --" );
+        builder.coloredValue( epCalc.expNeeded() - epCalc.exp(), 0, epCalc.expNeeded() );
+        builder.color().text( "--> " );
+        builder.value( epCalc.level + 1 );
+        messages.push( builder.toHtml() );
+        builder.clear();
+        builder.color().text( "EP: " );
         builder.value( epCalc.usedEP );
         builder.color().text( "/" );
-        builder.color( utils.COLOR_HIGHLIGHT ).text( epCalc.totalEP );
+        builder.highlight( epCalc.totalEP );
         builder.value( ` +${epCalc.leftEP}` );
         messages.push( builder.toHtml() );
 
@@ -1021,5 +1135,10 @@ module.exports = function ep_calculator( mod ) {
                 ui = null;
             }
         };
+    }
+
+    function round( value, precission = 0 ) {
+        let dev = 10 ** precission;
+        return Math.round( value * dev ) / dev;
     }
 };

@@ -1,7 +1,7 @@
 {
     "files": {
         "index.js": "6e5bf8cfaf9a469d6686813f946489e2da1bd859fb93f95d8eda1111be820799",
-        "module.json": "6c839e681e11aade0c5c17258aa9d90f1a7ae8a5766f9b9a7a9179043d067ffd",
+        "module.json": "07167c8b03a60a760061342858278b6c93d63fef6cc9edadc2834bddd76d1725",
         "README.md": "32d30b2bfac47cba34b0137da2302bb254186ddcb25640e0e63058d8863102cc",
         "settings_migrator.js": "c7fe7dbec947ba6098c45b3683a4468f94bbb58852986000402d63de9a8e8ecc",
         "settings_structure.js": "3f1aaa8b3a2a7e265dfc4e5e113bf6cbfaf722b1aae3a97e73527861f6e4fd7b",
@@ -10,9 +10,9 @@
         "data/ep-sources.js": "d702aa6f38ca2c0155b8c0a243f2bb7e0cc51ae76644b1539213dc8957895e0b",
         "data/ep.js": "b49b047592d3b668f2a50ef33bb1d5c04c53d28758cf24e34659f63fb1c68d35",
         "data/soft-cap.js": "9fadb92a1f1df03417efb2e7db7c235899ee7e5fafaa9a8997505d3747245a84",
-        "locale/locale-de.json": "5aba4212741744422d70ba0df79b67eb047b013945e3fb58974dd39532070e21",
-        "locale/locale-en.json": "d00d0bf88706389839b8e13129074c712099bfba09832efc380a86da8513570b",
-        "locale/locale-fr.json": "9eb9d665ff69381501bcb84f9aba62f1b0a6bac12641812cdc0c959cc11f31ec"
+        "locale/locale-de.json": "42a37afbc9c6c6032e2f7dda2af6b033cd65e22723eec066c3497f13e19c8d01",
+        "locale/locale-en.json": "999eea2d29d3ba975bd581a91867afa5d7732edf28ba00f55d349fb55a9433ec",
+        "locale/locale-fr.json": "ca0b61020bfec6c8b5207d9ac17f8ebeeb1b070020223e92f447243063b0251e"
     },
     "defs": {
         "S_LOAD_EP_INFO" : 1,

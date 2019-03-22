@@ -239,8 +239,16 @@ class EPCalc {
             let softCap = EPCalc.calcSoftCap( ep );
             softCapMod = EPCalc.calcSoftCapMod( softCap - leftExp, softCap );
         }
-        let epExp = EPCalc.bonusExp( ep, epTableKey, buffMod, catchUpMod, softCapMod );
-        return epExp > 0 ? Math.max( Math.floor( leftExp / epExp ), 0 ) : 0;
+        let epExp = EPCalc.bonusExp( ep, epTableKey, buffMod, catchUpMod, softCapMod, 0 );
+        let count = Math.max( Math.floor( leftExp / epExp ), 0 );
+        let epObject = EP_TABLE.get( epTableKey );
+        if ( count > epObject.limit ) {
+            count = epObject.limit;
+            leftExp -= count * epExp;
+            epExp = EPCalc.bonusExp( ep, epTableKey, buffMod, catchUpMod, softCapMod, epObject.limit + 1 );
+            count += Math.max( Math.floor( leftExp / epExp ), 0 );
+        }
+        return count;
     }
 
     get nextHightestEPSource() {
@@ -458,20 +466,21 @@ class EPCalc {
         return this._dailyExp;
     }
 
-    applyBonusModifier( epObj ) {
-        return EPCalc.applyBonusModifier( this._totalEP, epObj, this.buffMod, this.catchUpMod, this.softCapMod );
+    applyBonusModifier( epObj, count ) {
+        return EPCalc.applyBonusModifier( this._totalEP, epObj, this.buffMod, this.catchUpMod, this.softCapMod, count );
     }
 
-    static applyBonusModifier( ep, epObj, buffMod = 1, catchUpMod, softCapMod ) {
+    static applyBonusModifier( ep, epObj, buffMod = 1, catchUpMod, softCapMod, count ) {
         if ( catchUpMod == undefined ) catchUpMod = EPCalc.calcCatchUpMod( ep );
-        let exp = Math.ceil( ( epObj.isQuest ? VANGUARD_BONUS_MOD : 1 ) * epObj.exp );
+        let exp = count > epObj.limit ? epObj.expAfterLimit : epObj.exp;
+        exp = Math.ceil( ( epObj.isQuest ? VANGUARD_BONUS_MOD : 1 ) * exp );
         return Math.floor( catchUpMod * softCapMod * exp ) * buffMod;
     }
 
-    static bonusExp( ep, source, buffMod = 1, catchUpMod, softCapMod ) {
+    static bonusExp( ep, source, buffMod = 1, catchUpMod, softCapMod, count ) {
         let epObj = EP_TABLE.get( source );
         if ( !epObj ) return 0;
-        let epExp = EPCalc.applyBonusModifier( ep, epObj, buffMod, catchUpMod, softCapMod );
+        let epExp = EPCalc.applyBonusModifier( ep, epObj, buffMod, catchUpMod, softCapMod, count );
         // epExp += epObj.bams * EPCalc.applyBonusModifier( ep, EP_TABLE.get( BAM_SOURCE ) );
         return epExp;
     }
@@ -536,14 +545,14 @@ module.exports = function ep_calculator( mod ) {
             msgBuilder.text( "+ " );
             // FIXME totalEP might change after first vanguard has been turned in
             leftExp -= Math.round(
-                nextHighest.count
-                    * EPCalc.bonusExp(
-                        epCalc.totalEP,
-                        nextHighest.source,
-                        epCalc.buffMod,
-                        epCalc.catchUpMod,
-                        epCalc.softCapMod
-                    )
+                EPCalc.bonusExp(
+                    epCalc.totalEP,
+                    nextHighest.source,
+                    epCalc.buffMod,
+                    epCalc.catchUpMod,
+                    epCalc.softCapMod,
+                    nextHighest.count
+                )
             );
             msgBuilder.coloredValue( leftExp, epCalc.softCapStart );
             msgBuilder.color().text( ")" );

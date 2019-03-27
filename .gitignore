@@ -5,6 +5,7 @@ groups.json
 out
 logs
 opcodes
+test
 
 #module config
 config.json

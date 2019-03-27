@@ -3,7 +3,7 @@
     "name": "ep-calc",
     "author": "aurelius88",
     "description": "Calculate all things around EP. Like soft cap, modifiers, sources of EP, EP exp, etc.",
-    "version": "0.4.5",
+    "version": "0.4.6",
     "options": {
         "niceName": "EP-Calc",
         "settingsVersion": 2,

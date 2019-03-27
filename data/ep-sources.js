@@ -11,7 +11,7 @@ module.exports = new Map([
         "wintera", // Wintera
         { exp: 1215, expAfterLimit: 972, isQuest: true, limit: 1, asFiller: true, time: 300, bams: 0 }
     ],
-    ["levelUp65_2", { exp: 1000, expAfterLimit: 1000, isQuest: false, limit: 1, asFiller: false, time: -1, bams: 0 }],
+    ["levelUp65_2", { exp: 1000, expAfterLimit: 1000, isQuest: false, limit: 1, asFiller: false, time: Infinity, bams: 0 }],
     ["islandOfDawn", { exp: 911, expAfterLimit: 729, isQuest: true, limit: 16, asFiller: true, time: 80, bams: 10 }],
     ["echoesOfAranea", { exp: 911, expAfterLimit: 729, isQuest: true, limit: 16, asFiller: true, time: 120, bams: 0 }],
     ["kumasIronBG", { exp: 843, expAfterLimit: 674, isQuest: true, limit: 16, asFiller: true, time: 1000, bams: 0 }],
@@ -26,8 +26,8 @@ module.exports = new Map([
     ["kill30Quest", { exp: 270, expAfterLimit: 216, isQuest: true, limit: 16, asFiller: true, time: 300, bams: 0 }],
     ["gather30Quest", { exp: 180, expAfterLimit: 144, isQuest: true, limit: 16, asFiller: true, time: 180, bams: 0 }],
     ["carrot", { exp: 60, expAfterLimit: 48, isQuest: true, limit: 1, asFiller: false, time: 150, bams: 0 }],
-    ["bam", { exp: 10.0, expAfterLimit: 10.0, isQuest: false, limit: -1, asFiller: true, time: 8, bams: 0 }],
-    ["levelUp65_1", { exp: 1.0, expAfterLimit: 1.0, isQuest: false, limit: 1, asFiller: false, time: -1, bams: 0 }]
+    ["bam", { exp: 10, expAfterLimit: 10, isQuest: false, limit: Infinity, asFiller: true, time: 8, bams: 0 }],
+    ["levelUp65_1", { exp: 1, expAfterLimit: 1, isQuest: false, limit: 1, asFiller: false, time: Infinity, bams: 0 }]
 ]);
 // enchantment isn't something you can rely on. But for the sake of completeness:
 // enchant frostmetal +8 -> 45

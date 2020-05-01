@@ -3,14 +3,14 @@
     "name": "ep-calc",
     "author": "aurelius88",
     "description": "Calculate all things around EP. Like soft cap, modifiers, sources of EP, EP exp, etc.",
-    "version": "0.4.6",
+    "version": "0.4.7-dev",
     "options": {
         "niceName": "EP-Calc",
         "settingsVersion": 2,
         "settingsFile": "config.json",
         "settingsMigrator": "settings_migrator.js"
     },
-    "servers": ["https://raw.githubusercontent.com/aurelius88/ep-calc/master/"],
+    "servers": ["https://raw.githubusercontent.com/aurelius88/ep-calc/dev/"],
     "supportUrl": "https://github.com/aurelius88/ep-calc/issues",
     "dependencies": {
         "util-lib": "https://raw.githubusercontent.com/aurelius88/util-lib/master/module.json"

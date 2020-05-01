@@ -2,18 +2,21 @@
     "files": {
         "ep-calc.js": "b0e6f80aa7c4246493c444539edc7da84ec3fde964fe01c7af00be52d16ac430",
         "index.js": "5833c5f5e197baf1ee978688c4c5c509e31ccb26e002387c6eb6bfe33a1d6118",
-        "module.json": "7ac69067e5ac18983ebd7525f625e34baeb44301eb47ce3370e41572599a677d",
+        "module.json": "b7b0ffeef732033a05bdec8bf2827fe0c9fae6df2a3299a9b2fa6559f88ef9b7",
         "README.md": "32d30b2bfac47cba34b0137da2302bb254186ddcb25640e0e63058d8863102cc",
         "settings_migrator.js": "c7fe7dbec947ba6098c45b3683a4468f94bbb58852986000402d63de9a8e8ecc",
         "settings_structure.js": "3f1aaa8b3a2a7e265dfc4e5e113bf6cbfaf722b1aae3a97e73527861f6e4fd7b",
         "data/ep-buffs.js": "ee103e3e438c9f09a15260a28524d36c169f2175f69a9aceb9b9bf07de3d997f",
-        "data/ep-exp.js": "5fb27659754b605a9833bebf9a12b5855aa50d53dc9fff596432dc858d04f23d",
-        "data/ep-sources.js": "b980fd2cb8b7b0c761ac8bab8d352a863c6552db1eeee7e9e5a5fc703440d589",
+        "data/ep-exp.js": "6882fee0a5d4afe6b0261eeb0ca57849bc7172a08c44d90d8c9cc15e548db234",
+        "data/ep-sources.js": "43e7557f611651b25bd009228bd488991aa5857537d9e684a65c316e6bb1da1b",
         "data/ep.js": "b49b047592d3b668f2a50ef33bb1d5c04c53d28758cf24e34659f63fb1c68d35",
         "data/soft-cap.js": "9fadb92a1f1df03417efb2e7db7c235899ee7e5fafaa9a8997505d3747245a84",
-        "locale/locale-de.json": "42a37afbc9c6c6032e2f7dda2af6b033cd65e22723eec066c3497f13e19c8d01",
-        "locale/locale-en.json": "999eea2d29d3ba975bd581a91867afa5d7732edf28ba00f55d349fb55a9433ec",
-        "locale/locale-fr.json": "ca0b61020bfec6c8b5207d9ac17f8ebeeb1b070020223e92f447243063b0251e"
+        "locale/locale-de.json": "7cffea3a25a5201ca29f4022d73fca6bc02ca35bd34793152ce656c86aa2aaf8",
+        "locale/locale-en.json": "482fd10ca144ef26fd722ab44e870cb7a9d3b5681b0a77c9ffc8a306d3ff7b0e",
+        "locale/locale-fr.json": "148b4ada88e55b868a7a796f64b890457d81052d363a0d808a2a70394737a782",
+        "locale/dungeons-de.json": "9cc61c56d759c6e52bf07ab569b2df4c94710b46fd1400e034382cddf63d248d",
+        "locale/dungeons-en.json": "6177a3464c512d70d569820c90a2f4e520a7803d576d0f5ec6b7a0d9e0ba71ad",
+        "locale/dungeons-fr.json": "5a171cd581db36ca72796be56c80e17983087c1e1efabd50f8cf550e3f155d6a"
     },
     "defs": {
         "S_LOAD_EP_INFO" : 1,

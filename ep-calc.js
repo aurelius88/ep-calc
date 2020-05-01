@@ -6,12 +6,12 @@ const SOFT_CAP_CHANGE_END = SOFT_CAP_CHANGE_START + 0.2;
 const SOFT_CAP_MOD_BEFORE = 1;
 const SOFT_CAP_MOD_AFTER = 0.05;
 const VANGUARD_BONUS_MOD = 1.3;
-const CATCH_UP_CHANGE_START = 398;
-const CATCH_UP_CHANGE_END = 497;
+const CATCH_UP_CHANGE_START = BigInt( 2983674 );
+const CATCH_UP_CHANGE_END = CATCH_UP_CHANGE_START + BigInt( 1249231 );
 const CATCH_UP_MOD_BEFORE = 3;
 const CATCH_UP_MOD_AFTER = 0.1;
 const SOFT_CAP_GRADIENT = ( SOFT_CAP_MOD_BEFORE - SOFT_CAP_MOD_AFTER ) / ( SOFT_CAP_CHANGE_START - SOFT_CAP_CHANGE_END );
-const CATCH_UP_GRADIENT = ( CATCH_UP_MOD_BEFORE - CATCH_UP_MOD_AFTER ) / ( CATCH_UP_CHANGE_START - CATCH_UP_CHANGE_END );
+const CATCH_UP_GRADIENT = ( CATCH_UP_MOD_BEFORE - CATCH_UP_MOD_AFTER ) / Number( CATCH_UP_CHANGE_START - CATCH_UP_CHANGE_END );
 const BAM_SOURCE = "bam";
 const CRUCIAL_BAM_COUNT = 12;
 const MAX_EP_LEVEL = 443;
@@ -114,6 +114,19 @@ class EPCalc {
         return BigInt( EP_EXP[level]);
     }
 
+    static expAtEP( ep ) {
+        let level = binarySearch( EP, ep, ( ep1, ep2 ) => ep1 - ep2 );
+        return EPCalc.expAtLevel( level );
+    }
+
+    static levelAtExp ( exp ) {
+        return binarySearch( EP_EXP, exp, ( exp1, exp2 ) => exp1 - exp2 )
+    }
+
+    static epAtExp ( exp ) {
+        return EP[EPCalc.levelAtExp( exp )];
+    }
+
     // bigint
     static exp( level, totalExp ) {
         if ( level < 0 || level > MAX_EP_LEVEL ) throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL}` );
@@ -148,7 +161,7 @@ class EPCalc {
      */
     countAllEPSources() {
         return EPCalc.countAllEPSources(
-            this._totalEP,
+            this._totalExp,
             this.leftDailyBonusExp( true ),
             this.buffMod,
             this.catchUpMod,
@@ -165,10 +178,10 @@ class EPCalc {
      * @param  {number} buffMod    the modifier of the ep buffs.
      * @return {object}            an object with all sources + counts. \{source:count\}
      */
-    static countAllEPSources( ep, leftExp, buffMod = 1, catchUpMod, softCapMod, dailyQuestLimit ) {
+    static countAllEPSources( totalExp, leftExp, buffMod = 1, catchUpMod, softCapMod, dailyQuestLimit ) {
         let result = {};
         for ( let key of EP_TABLE.keys() ) {
-            result[key] = EPCalc.countEPSource( ep, leftExp, key, buffMod, catchUpMod, softCapMod, dailyQuestLimit );
+            result[key] = EPCalc.countEPSource( totalExp, leftExp, key, buffMod, catchUpMod, softCapMod, dailyQuestLimit );
         }
         return result;
     }
@@ -188,7 +201,7 @@ class EPCalc {
      */
     countEPSource( epTableKey ) {
         return EPCalc.countEPSource(
-            this._totalEP,
+            this._totalExp,
             this.leftDailyBonusExp( true ),
             epTableKey,
             this.buffMod,
@@ -201,7 +214,7 @@ class EPCalc {
     /**
      * Counts how many times a char can do a specific source before reaching the
      * start of soft cap.
-     * @param  {number} ep              the current total EP.
+     * @param  {number} totalExp        the current total ep experience.
      * @param  {bigint} leftExp         the current remaining ep experience.
      * @param  {string} epTableKey      the source as string key.
      * @param  {number} [buffMod=1]     the ep buff modifier. 1 by default which means "no buff".
@@ -209,18 +222,18 @@ class EPCalc {
      * @param  {number} [softCapMod]    the soft cap modifier. Calculated if not specified.
      * @return {number}            the number of sources a char can do.
      */
-    static countEPSource( ep, leftExp, epTableKey, buffMod = 1, catchUpMod, softCapMod, dailyQuestLimit ) {
+    static countEPSource( totalExp, leftExp, epTableKey, buffMod = 1, catchUpMod, softCapMod, dailyQuestLimit ) {
         if ( softCapMod == undefined ) {
-            let softCap = EPCalc.calcSoftCap( ep );
+            let softCap = EPCalc.calcSoftCap( EPCalc.epAtExp( totalExp ) );
             softCapMod = EPCalc.calcSoftCapMod( softCap - leftExp, softCap );
         }
-        let epExp = EPCalc.bonusExp( ep, epTableKey, buffMod, catchUpMod, softCapMod, false );
+        let epExp = EPCalc.bonusExp( totalExp, epTableKey, buffMod, catchUpMod, softCapMod, false );
         let count = Math.max( Math.floor( leftExp / epExp ), 0 );
         let epObject = EP_TABLE.get( epTableKey );
         if ( count > dailyQuestLimit && count < epObject.limit ) {
             count = epObject.limit;
             leftExp -= count * epExp;
-            epExp = EPCalc.bonusExp( ep, epTableKey, buffMod, catchUpMod, softCapMod, true );
+            epExp = EPCalc.bonusExp( totalExp, epTableKey, buffMod, catchUpMod, softCapMod, true );
             count += Math.max( Math.floor( leftExp / epExp ), 0 );
         }
         return Math.min( count, epObject.limit );
@@ -237,8 +250,8 @@ class EPCalc {
         );
     }
 
-    static calcNextHighestEPSource( ep, leftExp, buffMod = 1, catchUpMod, softCapMod, dailyQuestLimit ) {
-        let sourceCounts = EPCalc.countAllEPSources( ep, leftExp, buffMod, catchUpMod, softCapMod, dailyQuestLimit );
+    static calcNextHighestEPSource( totalExp, leftExp, buffMod = 1, catchUpMod, softCapMod, dailyQuestLimit ) {
+        let sourceCounts = EPCalc.countAllEPSources( totalExp, leftExp, buffMod, catchUpMod, softCapMod, dailyQuestLimit );
         let highestSource = null;
         for ( let source in sourceCounts ) {
             if ( sourceCounts[source] < 1 || !EP_TABLE.get( source ).asFiller ) continue;
@@ -281,13 +294,14 @@ class EPCalc {
      * (Approximatly) calculates the soft cap by a given ep value and using a soft cap table.
      * @param  {number} ep the ep value.
      * @return {number}    the soft cap by the ep value.
+     * Note: Might be total exp dependent and not ep dependent
      */
     static calcSoftCap( ep ) {
         let keys = Array.from( SOFT_CAP_TABLE.keys() );
         let foundKey = binarySearch( keys, ep, ( keyA, keyB ) => keyA - keyB );
         if ( foundKey < 0 ) foundKey = ~foundKey - 1;
         if ( foundKey < 0 ) foundKey = 0;
-        return Math.floor( SOFT_CAP_TABLE.get( keys[foundKey]) * EPCalc.calcCatchUpMod( ep ) );
+        return Math.floor( SOFT_CAP_TABLE.get( keys[foundKey]) * EPCalc.calcCatchUpMod( EPCalc.expAtEP( ep ) ) );
     }
 
     static calcSoftCapStart( ep ) {
@@ -348,19 +362,18 @@ class EPCalc {
      * @return {number} your catch up modifier based on your EP.
      */
     calcCatchUpMod() {
-        return EPCalc.calcCatchUpMod( this._totalEP );
+        return EPCalc.calcCatchUpMod( this._totalExp );
     }
 
     /**
      * (Approximatly) calculates the catch up modifier.
-     * @param  {number} ep the total EP on which to calc the modifier.
-     * @return {number}    the catch up modifier based on given EP.
+     * @param  {bigint} totalExp the total EXP on which to calc the modifier.
+     * @return {number} the catch up modifier based on given total exp.
      */
-    static calcCatchUpMod( ep ) {
-        if ( typeof ep !== "number" ) throw new TypeError( "Argument should be a Number." );
-        if ( ep < CATCH_UP_CHANGE_START ) return CATCH_UP_MOD_BEFORE;
-        if ( ep > CATCH_UP_CHANGE_END ) return CATCH_UP_MOD_AFTER;
-        return ( ep - CATCH_UP_CHANGE_START ) * CATCH_UP_GRADIENT + CATCH_UP_MOD_BEFORE;
+    static calcCatchUpMod( totalExp ) {
+        if ( totalExp < CATCH_UP_CHANGE_START ) return CATCH_UP_MOD_BEFORE;
+        if ( totalExp > CATCH_UP_CHANGE_END ) return CATCH_UP_MOD_AFTER;
+        return Number( totalExp - CATCH_UP_CHANGE_START ) * CATCH_UP_GRADIENT + CATCH_UP_MOD_BEFORE;
     }
 
     /**
@@ -453,17 +466,17 @@ class EPCalc {
         );
     }
 
-    static applyBonusModifier( ep, epObj, buffMod = 1, catchUpMod, softCapMod, dailyLimitExeeded ) {
-        if ( catchUpMod == undefined ) catchUpMod = EPCalc.calcCatchUpMod( ep );
+    static applyBonusModifier( totalExp, epObj, buffMod = 1, catchUpMod, softCapMod, dailyLimitExeeded ) {
         let exp = dailyLimitExeeded ? epObj.expAfterLimit : epObj.exp;
         exp = Math.ceil( ( epObj.isQuest ? VANGUARD_BONUS_MOD : 1 ) * exp );
+        if ( catchUpMod == undefined ) catchUpMod = EPCalc.calcCatchUpMod( totalExp );
         return Math.floor( catchUpMod * softCapMod * exp ) * buffMod;
     }
 
-    static bonusExp( ep, source, buffMod = 1, catchUpMod, softCapMod, dailyLimitExeeded ) {
+    static bonusExp( totalExp, source, buffMod = 1, catchUpMod, softCapMod, dailyLimitExeeded ) {
         let epObj = EP_TABLE.get( source );
         if ( !epObj ) return 0;
-        let epExp = EPCalc.applyBonusModifier( ep, epObj, buffMod, catchUpMod, softCapMod, dailyLimitExeeded );
+        let epExp = EPCalc.applyBonusModifier( totalExp, epObj, buffMod, catchUpMod, softCapMod, dailyLimitExeeded );
         // epExp += epObj.bams * EPCalc.applyBonusModifier( ep, EP_TABLE.get( BAM_SOURCE ) );
         return epExp;
     }

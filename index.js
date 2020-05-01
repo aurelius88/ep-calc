@@ -10,7 +10,7 @@ const EP_TABLE = require( "./data/ep-sources" );
 
 const DEFAULT_LOCALE = {
     batuDesert: "Batu Desert",
-    dungeon439: "439+ dungeon",
+    dungeon439: "435+ dungeon",
     CorsairsFraywindSkyring: "Corsairs / Fraywind / Skyring",
     dungeon431: "431 dungeon",
     dungeon412: "412 dungeon",
@@ -18,11 +18,13 @@ const DEFAULT_LOCALE = {
     levelUp65_2: "Level up -> 65 (2nd char)",
     islandOfDawn: "Island of Dawn Low/Mid/High",
     echoesOfAranea: "Echoes of Aranea",
-    kumasIronBG: "Kumas / Iron BG",
+    kumas: "Kumas",
+    ironBG: "Iron BG",
     fishing: "Mission: Fishing",
     guardianAndFlyingVanguard: "Guardian Vanguard / Flying Vanguard",
     pitOfPetrax: "Pit of Petrax",
     celestialArena: "Celestial Arena",
+    aceDungeonLili: "Ace dungeon Lili",
     aceDungeons: "Ace dungeons",
     kill30Quest: "Kill 30/50 __ quest",
     gather30Quest: "Gather 30 __ quest",
@@ -34,6 +36,7 @@ const DEFAULT_LOCALE = {
 const SettingsUI = require( "tera-mod-ui" ).Settings;
 
 const EPCalc = require( "./ep-calc" );
+const EPOrganizer = require("./ep-organizer");
 
 const ROOT_COMMAND = "epc";
 const ROOT_COMMAND_ALTS = ["ep-calc"];
@@ -47,6 +50,7 @@ module.exports = function ep_calculator( mod ) {
     const utils = new ChatHelper( mod );
     const epCalc = new EPCalc( mod );
     const fileHelper = new UtilLib["file-helper"]();
+    let epOrganizer;
 
     const configData = mod.settings;
     const command = mod.command;
@@ -55,12 +59,14 @@ module.exports = function ep_calculator( mod ) {
         if ( configData.tracking ) {
             printEPStatus();
         }
+        if( epOrganizer == undefined ) epOrganizer = new EPOrganizer( epCalc );
     });
 
     mod.hook( "S_CHANGE_EP_EXP_DAILY_LIMIT", 1, () => {
         if ( configData.tracking ) {
             printEPStatus();
         }
+        if( epOrganizer == undefined ) epOrganizer = new EPOrganizer( epCalc );
     });
 
     let language = ( configData && configData.defaultLanguage ) || "en";
@@ -150,7 +156,7 @@ module.exports = function ep_calculator( mod ) {
             if ( value == undefined || value == "" ) printHelpList( this.help );
             else {
                 cmdMsg.clear();
-                cmdMsg.text( 'Unknown command. Type "epc help" for help.' );
+                cmdMsg.text( `Unknown command. Type "${ROOT_COMMAND} help" for help.` );
                 utils.printMessage( cmdMsg.toHtml() );
             }
         },
@@ -184,12 +190,24 @@ module.exports = function ep_calculator( mod ) {
                 }`
             );
         },
+        "best-time-path": function( leftDailyExp ) {
+            let bestTimePath = epOrganizer.bestTimePath( leftDailyExp );
+            showResult( result( bestTimePath ), "Best Time Path" );
+        },
+        "best-fit-path": function( leftDailyExp ) {
+            let bestFitPath = epOrganizer.bestFitPath( leftDailyExp );
+            showResult( result( bestFitPath ), "Best Fit Path" );
+        },
+        "best-mix-path": function( leftDailyExp ) {
+            let bestMixPath = epOrganizer.bestMixPath( leftDailyExp );
+            showResult( result( bestMixPath ), "Best Mix Path" );
+        },
         count: printEpSourcesCount,
         "catch-up-mod": function( ep ) {
             if ( !ep ) return printHelpList( this.help["catch-up-mod"]);
             cmdMsg.clear();
             try {
-                cmdMsg.value( EPCalc.calcCatchUpMod( parseInt( ep, 10 ) ) );
+                cmdMsg.value( EPCalc.calcCatchUpMod( EPCalc.expAtEP( parseInt( ep, 10 ) ) ) );
             } catch ( e ) {
                 cmdMsg.text( e );
             }
@@ -354,7 +372,7 @@ module.exports = function ep_calculator( mod ) {
                     return "Prints the highest source for EP exp that can be done without exceeding the soft cap.";
                 },
                 $default() {
-                    printHelpList( this.help.verbose );
+                    printHelpList( this.help.highest );
                 }
             },
             "catch-up-mod": {
@@ -396,7 +414,7 @@ module.exports = function ep_calculator( mod ) {
                     return cmdMsg.toHtml();
                 },
                 $default() {
-                    printHelpList( this.help["soft-cap-mod"]);
+                    printHelpList( this.help["soft-cap"]);
                 }
             },
             "soft-cap-mod": {
@@ -610,6 +628,59 @@ module.exports = function ep_calculator( mod ) {
             msgBuilder.color( utils.COLOR_DISABLE ).text( "disabled" );
         }
         return msgBuilder.color();
+    }
+
+    function result( sourceList, methodName ) {
+        if (sourceList) {
+            let counts = new Map();
+            return sourceList.reduce(
+                (acc, cur) => {
+                    let curObj = EP_TABLE.get(cur);
+                    if (!curObj) return acc;
+                    let bam = EP_TABLE.get("bam");
+                    let bamExp = curObj.bams * epCalc.applyBonusModifier(bam, 1);
+                    let exp = epCalc.applyBonusModifier(curObj, 1) + bamExp;
+                    acc.totalExp += exp;
+                    acc.time += curObj.time;
+                    let objBefore = acc.sources.get(cur);
+                    acc.sources.set(
+                        cur,
+                        objBefore ? {
+                            exp: objBefore.exp + exp,
+                            bamExp: objBefore.bamExp + bamExp,
+                            time: objBefore.time + curObj.time,
+                            count: ++objBefore.count
+                        } : {
+                            exp: exp,
+                            bamExp: bamExp,
+                            time: curObj.time,
+                            count: 1
+                        }
+                    );
+
+                    return acc;
+                },
+                { method: methodName, totalExp: 0, time: 0, sources: new Map() }
+            );
+        }
+    }
+
+    function showResult( result ) {
+        cmdMsg.clear();
+        cmdMsg.highlight(result.method).color();
+        cmdMsg.text(": ").value(result.totalExp)
+        cmdMsg.color().text(" XP, ");
+        cmdMsg.value( utils.msToUTCTimeString( result.time*1000 ) ).color();
+        utils.printMessage(cmdMsg.toHtml());
+        for( let [source, info] of result.sources ) {
+            cmdMsg.clear();
+            cmdMsg.value(info.count).color().text("x ");
+            cmdMsg.highlight(source).color();
+            cmdMsg.text(": ").value(info.exp);
+            cmdMsg.color().text(" XP, ");
+            cmdMsg.value( utils.msToUTCTimeString( info.time*1000 ) ).color();
+            utils.printMessage(cmdMsg.toHtml());
+        }
     }
 
     function showEPStatus() {

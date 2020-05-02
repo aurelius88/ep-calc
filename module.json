@@ -3,9 +3,9 @@
     "name": "ep-calc",
     "author": "aurelius88",
     "description": "Calculate all things around EP. Like soft cap, modifiers, sources of EP, EP exp, etc.",
-    "version": "1.5.0-dev",
+    "version": "1.5.1-dev",
     "options": {
-        "niceName": "EP-Calc",
+        "niceName": "EP-Calc (dev)",
         "settingsVersion": 2,
         "settingsFile": "config.json",
         "settingsMigrator": "settings_migrator.js"

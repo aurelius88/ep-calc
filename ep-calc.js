@@ -110,7 +110,7 @@ class EPCalc {
     }
 
     static expAtLevel( level ) {
-        if ( level < 0 || level > MAX_EP_LEVEL ) throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL}` );
+        if ( level < 0 || level > MAX_EP_LEVEL+1 ) throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL+1}, but was ${level}` );
         return BigInt( EP_EXP[level]);
     }
 
@@ -129,9 +129,9 @@ class EPCalc {
 
     // bigint
     static exp( level, totalExp ) {
-        if ( level < 0 || level > MAX_EP_LEVEL ) throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL}` );
-        if ( totalExp < BigInt( EP_EXP[level]) || ( level != MAX_EP_LEVEL && totalExp >= BigInt( EP_EXP[level + 1]) ) )
-            throw new RangeError( `"totalExp" should be >= ${EP_EXP[level]} and < ${EP_EXP[level + 1]}` );
+        if ( level < 0 || level > MAX_EP_LEVEL+1 ) throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL+1}, but was ${level}` );
+        if ( totalExp < BigInt( EP_EXP[level]) || ( level != MAX_EP_LEVEL+1 && totalExp >= BigInt( EP_EXP[level + 1]) ) )
+            throw new RangeError( `"totalExp" should be >= ${EP_EXP[level]} and < ${EP_EXP[level + 1]}, but was ${totalExp}` );
         return totalExp - BigInt( EP_EXP[level]);
     }
 
@@ -149,7 +149,7 @@ class EPCalc {
     }
 
     static expNeeded( level ) {
-        if ( level < 0 || level > MAX_EP_LEVEL ) throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL}` );
+        if ( level < 0 || level > MAX_EP_LEVEL+1 ) throw new RangeError( `"level" should be >= 0 and <= ${MAX_EP_LEVEL+1}, but was ${level}` );
         return level < EP_EXP.length - 1 ? BigInt( EP_EXP[level + 1]) - BigInt( EP_EXP[level]) : BigInt( 0 );
     }
 

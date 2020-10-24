@@ -21,14 +21,20 @@ module.exports = function MigrateSettings( from_ver, to_ver, settings ) {
         return DefaultSettings;
     } else {
         // Migrate from older version (using the new system) to latest one
-        let migratedSettings = null;
-        switch ( from_ver ) {
-            case 1:
-                migratedSettings = Object.assign( settings, { tracking: false, verbose: false });
-                break;
-            default:
-                throw new Error( "There is no other version migration." );
+        let migratedSettings = Object.assign({}, settings );
+        // Upgrade
+        for ( let cur_ver = from_ver; cur_ver < to_ver; cur_ver++ ) {
+            switch ( from_ver ) {
+                case 1:
+                    migratedSettings = Object.assign( Object.assign({}, DefaultSettings ), settings );
+                    break;
+                default:
+                    throw new Error( "There is no other version migration." );
+            }
         }
+        // Downgrade without loosing settings
+        if ( from_ver > to_ver ) migratedSettings = Object.assign( Object.assign({}, DefaultSettings ), settings );
+
         return migratedSettings;
     }
 };

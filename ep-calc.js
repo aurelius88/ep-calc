@@ -31,7 +31,7 @@ class EPCalc {
         this._buff = null;
         this._dailyQuestLimit = 16;
 
-        mod.hook( "S_LOAD_EP_INFO", 1, e => {
+        mod.hook( "S_LOAD_EP_INFO", 2, e => {
             this._level = e.level;
             this._totalEP = e.totalPoints;
             this._totalExp = e.exp;
@@ -56,8 +56,8 @@ class EPCalc {
             this._softCap = e.limit;
         });
 
-        mod.hook( "S_ABNORMALITY_BEGIN", 3, this.updateBuffMod.bind( this, "S_ABNORMALITY_BEGIN" ) );
-        mod.hook( "S_ABNORMALITY_REFRESH", 1, this.updateBuffMod.bind( this, "S_ABNORMALITY_REFRESH" ) );
+        mod.hook( "S_ABNORMALITY_BEGIN", 4, this.updateBuffMod.bind( this, "S_ABNORMALITY_BEGIN" ) );
+        mod.hook( "S_ABNORMALITY_REFRESH", 2, this.updateBuffMod.bind( this, "S_ABNORMALITY_REFRESH" ) );
         mod.hook( "S_ABNORMALITY_END", 1, this.resetBuffMod.bind( this ) );
         mod.hook( "S_RETURN_TO_LOBBY", 1, this.resetBuffMod.bind( this ) );
     }

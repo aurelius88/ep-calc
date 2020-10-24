@@ -8,4 +8,4 @@ opcodes
 test
 
 #module config
-config.json
+*config.json

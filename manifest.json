@@ -1,9 +1,9 @@
 {
     "files": {
-        "ep-calc.js": "d7b75d9c9c5771380f1cdfd55ecf81eed36ff0f727399bc1ed0d3bcff34e5219",
+        "ep-calc.js": "bd9ed83a36f84a69f6626ba53e0972697359da56d8112ac3c6a20b0f84739506",
         "ep-organizer.js": "2be49bea43c951c499993c1c2bf847bc4a91db7df213b46a8f8948ea1d45ad6f",
         "index.js": "29dc551078b74e49d2e718d2f4c43e79841e8c8a1580cc647d8caed80d63525c",
-        "module.json": "124b6be8dcab8d0a50f0ab8658fbd37996466f0503a6a2d5f9c9721f4b86020b",
+        "module.json": "c3ed8f5d1aeb31e910b8738d8b67f8e61b5570034696af20b73beb78d56f7f27",
         "package-lock.json": "851260bd147a1c5343c18d596f51446a2da776f82b3bc8447bc2a54105b8a981",
         "README.md": "499d9c39a434e267808f680d641a86c69b03defb36d0a31096d4dde4dfc573cb",
         "settings_migrator.js": "f605e4c12afd44dd26a3f778abf8671643c06fa016733ad803b90c79739f0d82",

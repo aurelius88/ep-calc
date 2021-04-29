@@ -31,7 +31,7 @@ class EPCalc {
         this._buff = null;
         this._dailyQuestLimit = 16;
 
-        mod.hook( "S_LOAD_EP_INFO", 2, e => {
+        mod.hook( "S_LOAD_EP_INFO", 3, e => {
             this._level = e.level;
             this._totalEP = e.totalPoints;
             this._totalExp = e.exp;
